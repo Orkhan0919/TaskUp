@@ -1,0 +1,446 @@
+@using System.Linq
+@using TaskUp.Utilities.Enums
+@model TaskUp.Models.Board
+
+@{
+    ViewData["Title"] = Model.Name;
+    Layout = "_BoardLayout";
+}
+
+<div class="h-screen flex bg-gray-950 text-gray-100 overflow-hidden">
+    <div class="w-16 bg-gray-900 flex flex-col items-center py-6 space-y-8">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-blue-700 flex items-center justify-center">
+            <i class="fas fa-tasks text-white text-lg"></i>
+        </div>
+
+        <nav class="flex-1 flex flex-col items-center space-y-6">
+            <a href="#"
+               class="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 transition-colors"
+               title="Dashboard">
+                <i class="fas fa-columns text-xl"></i>
+            </a>
+
+            <a href="#"
+               class="w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-gray-300 transition-colors"
+               title="Members">
+                <i class="fas fa-users text-xl"></i>
+            </a>
+
+            <a href="#"
+               class="w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-gray-300 transition-colors"
+               title="Settings">
+                <i class="fas fa-cog text-xl"></i>
+            </a>
+        </nav>
+
+        <div class="mt-auto">
+            <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border-2 border-gray-700">
+                <i class="fas fa-user text-gray-400"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-gray-900 border-b border-gray-800 px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">@Model.Name</h1>
+                    <div class="flex items-center space-x-4 mt-2 text-sm text-gray-400">
+                        <span class="flex items-center">
+                            <i class="fas fa-users mr-2"></i>
+                            <span>@(Model.Members?.Count ?? 0) members</span>
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-tasks mr-2"></i>
+                            <span>@(Model.Columns?.Sum(c => c.Tasks?.Count ?? 0) ?? 0) tasks</span>
+                        </span>
+                        @if (!string.IsNullOrEmpty(Model.Description))
+                        {
+                            <span class="flex items-center">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <span>@Model.Description</span>
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <button
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium transition-colors flex items-center">
+                        <i class="fas fa-share-alt mr-2"></i>
+                        Share
+                        <span class="ml-2 px-2 py-1 bg-gray-700 text-xs rounded">@Model.JoinCode</span>
+                    </button>
+
+                    <button id="addColumnBtn"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium transition-colors flex items-center">
+                        <i class="fas fa-plus mr-2"></i>
+                        Add Column
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-x-auto p-6">
+            <div class="flex space-x-6 min-w-max">
+                @if (Model.Columns != null)
+                {
+                    @foreach (var column in Model.Columns.OrderBy(c => c.Order))
+                    {
+                        <div class="w-80 flex-shrink-0">
+                            <div
+                                class="bg-gray-900 rounded-t-2xl p-4 border-b border-gray-800 flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <h3 class="font-semibold text-lg">@column.Name</h3>
+                                    <span class="ml-3 px-2 py-1 bg-gray-800 text-gray-400 text-xs rounded-full">
+                                        @(column.Tasks?.Count ?? 0)
+                                    </span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-gray-400 hover:text-white p-1">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-gray-900 rounded-b-2xl p-4 min-h-[500px] max-h-[calc(100vh-200px)] overflow-y-auto space-y-4 drag-drop-container"
+                                data-column-id="@column.Id">
+                                @if (column.Tasks != null)
+                                {
+                                    @foreach (var task in column.Tasks.OrderBy(t => t.Order))
+                                    {
+                                        // 1. Değişken tanımını en başa alıyoruz ki aşağıda kullanabilelim
+                                        var priorityClass = task.Priority switch
+                                        {
+                                            TaskPriority.Urgent => "bg-purple-900/30 text-purple-400 border-purple-700/30",
+                                            TaskPriority.High => "bg-red-900/30 text-red-400 border-red-700/30",
+                                            TaskPriority.Medium => "bg-yellow-900/30 text-yellow-400 border-yellow-700/30",
+                                            TaskPriority.Low => "bg-green-900/30 text-green-400 border-green-700/30",
+                                            _ => "bg-gray-700 text-gray-400 border-gray-600"
+                                        };
+
+                                        <div
+                                            class="task-card bg-gray-800 rounded-xl p-4 cursor-move hover:bg-gray-750 transition-colors border border-gray-700 hover:border-gray-600 mb-3"
+                                            data-task-id="@task.Id">
+
+                                            <div class="flex justify-between items-start mb-3 gap-2">
+                                                <h4 class="font-medium text-white text-sm leading-tight flex-1">@task.Title</h4>
+
+                                                <span
+                                                    class="px-2 py-0.5 rounded text-[10px] font-medium border @priorityClass shrink-0">
+                @task.Priority.ToString()
+            </span>
+                                            </div>
+
+                                            @if (!string.IsNullOrEmpty(task.Description))
+                                            {
+                                                <p class="text-gray-400 text-xs mb-4 line-clamp-2">@task.Description</p>
+                                            }
+
+                                            <div class="flex items-center justify-between text-xs mb-3">
+                                                @if (task.DueDate.HasValue)
+                                                {
+                                                    var isOverdue = task.DueDate < DateTime.Now;
+                                                    var dateClass = isOverdue ? "text-red-400" : "text-gray-400";
+
+                                                    <span class="flex items-center @dateClass">
+                    <i class="fas fa-calendar-alt mr-1.5"></i>
+                                                        @task.DueDate.Value.ToString("MMM dd")
+                </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-gray-500 italic">No date</span>
+                                                }
+
+                                                <div class="flex items-center -space-x-2">
+                                                    @if (task.Assignees != null && task.Assignees.Any())
+                                                    {
+                                                        @foreach (var assignee in task.Assignees.Take(3))
+                                                        {
+                                                            <div
+                                                                class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-[10px] text-white font-bold"
+                                                                title="@assignee.User?.UserName">
+                                                                @(assignee.User?.UserName?.Substring(0, 1).ToUpper() ?? "?")
+                                                            </div>
+                                                        }
+
+                                                        @if (task.Assignees.Count > 3)
+                                                        {
+                                                            <div
+                                                                class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-[10px] text-white font-bold">
+                                                                +@(task.Assignees.Count - 3)
+                                                            </div>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <div
+                                                            class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-xs text-gray-500">
+                                                            <i class="fas fa-user"></i>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                class="pt-2 border-t border-gray-700 flex items-center justify-start gap-4 text-xs text-gray-500">
+                                                <div class="flex items-center hover:text-gray-300">
+                                                    <i class="fas fa-comment mr-1.5"></i>
+                                                    <span>@(task.Comments?.Count ?? 0)</span>
+                                                </div>
+                                                <div class="flex items-center hover:text-gray-300">
+                                                    <i class="fas fa-paperclip mr-1.5"></i>
+                                                    <span>@(task.Attachments?.Count ?? 0)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+
+                                <button
+                                    class="w-full p-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl border-2 border-dashed border-gray-700 hover:border-gray-600 transition-colors flex items-center justify-center">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    Add Task
+                                </button>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <div class="w-80 flex-shrink-0">
+                    <div
+                        class="bg-gray-900 rounded-2xl p-6 border-2 border-dashed border-gray-700 hover:border-gray-600 transition-colors h-full flex flex-col items-center justify-center">
+                        <div class="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center mb-4">
+                            <i class="fas fa-plus text-2xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-300 mb-2">Add New Column</h3>
+                        <p class="text-gray-500 text-center text-sm mb-4">Create a new column for your workflow</p>
+                        <button
+                            class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium transition-colors">
+                            Create Column
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="addColumnModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 rounded-2xl p-8 w-full max-w-md mx-4">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-white">Create New Column</h3>
+            <button id="closeModal" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <form id="createColumnForm">
+            <div class="mb-6">
+                <label class="block text-gray-300 mb-2">Column Name</label>
+                <input type="text"
+                       id="columnName"
+                       class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                       placeholder="e.g., In Progress, Review"
+                       required>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <button type="button" id="cancelBtn"
+                        class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-medium transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-colors">
+                    Create Column
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .line-clamp-2 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+
+        .drag-drop-container {
+            scrollbar-width: thin;
+            scrollbar-color: #4b5563 #1f2937;
+        }
+
+        .drag-drop-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .drag-drop-container::-webkit-scrollbar-track {
+            background: #1f2937;
+            border-radius: 3px;
+        }
+
+        .drag-drop-container::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+
+        .drag-drop-container::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        .task-card {
+            transition: all 0.2s ease;
+        }
+
+        .task-card.dragging {
+            opacity: 0.5;
+            transform: rotate(3deg);
+        }
+
+        .task-card.drag-over {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const addColumnBtn = document.getElementById('addColumnBtn');
+            const addColumnModal = document.getElementById('addColumnModal');
+            const closeModal = document.getElementById('closeModal');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const createColumnForm = document.getElementById('createColumnForm');
+
+            if (addColumnBtn) {
+                addColumnBtn.addEventListener('click', () => {
+                    addColumnModal.classList.remove('hidden');
+                });
+            }
+
+            const closeModalFunc = () => {
+                addColumnModal.classList.add('hidden');
+            };
+
+            if (closeModal) closeModal.addEventListener('click', closeModalFunc);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModalFunc);
+
+            if (createColumnForm) {
+                createColumnForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const columnName = document.getElementById('columnName').value;
+
+                    console.log('Creating column:', columnName);
+
+                    closeModalFunc();
+                    document.getElementById('columnName').value = '';
+
+                    alert(`Column "${columnName}" created successfully!`);
+                });
+            }
+
+            const taskCards = document.querySelectorAll('.task-card');
+            const columns = document.querySelectorAll('.drag-drop-container');
+
+            taskCards.forEach(card => {
+                card.setAttribute('draggable', 'true');
+
+                card.addEventListener('dragstart', (e) => {
+                    card.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', card.dataset.taskId);
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                });
+            });
+
+            columns.forEach(column => {
+                column.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const draggingCard = document.querySelector('.dragging');
+                    if (draggingCard) {
+                        column.classList.add('drag-over');
+                    }
+                });
+
+                column.addEventListener('dragleave', () => {
+                    column.classList.remove('drag-over');
+                });
+
+                column.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    column.classList.remove('drag-over');
+
+                    const taskId = e.dataTransfer.getData('text/plain');
+                    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+
+                    if (taskCard && column !== taskCard.parentElement) {
+                        console.log(`Moving task ${taskId} to column ${column.dataset.columnId}`);
+
+                        column.insertBefore(taskCard, column.lastElementChild);
+
+                        const columnName = column.parentElement.querySelector('h3').textContent;
+                        console.log(`Task moved to ${columnName}`);
+                    }
+                });
+            });
+
+            const addTaskButtons = document.querySelectorAll('.drag-drop-container button:last-child');
+            addTaskButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const column = this.closest('.drag-drop-container');
+                    const columnName = column.parentElement.querySelector('h3').textContent;
+
+                    const taskTitle = prompt(`Add a new task to "${columnName}":`);
+
+                    if (taskTitle && taskTitle.trim()) {
+                        const newTaskCard = document.createElement('div');
+                        newTaskCard.className = 'task-card bg-gray-800 rounded-xl p-4 cursor-move hover:bg-gray-750 transition-colors border border-gray-700 hover:border-gray-600';
+                        newTaskCard.setAttribute('draggable', 'true');
+                        newTaskCard.dataset.taskId = 'temp-' + Date.now();
+
+                        newTaskCard.innerHTML = `
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-medium text-white">${taskTitle}</h4>
+                                <span class="px-2 py-1 text-xs font-medium rounded-lg border bg-gray-700 text-gray-400 border-gray-600">
+                                    Medium
+                                </span>
+                            </div>
+                            <div class="text-sm text-gray-500 mb-4">
+                                New task added just now
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-500 text-sm">No due date</span>
+                                <div class="flex items-center -space-x-2">
+                                    <div class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-xs text-gray-500">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        newTaskCard.addEventListener('dragstart', (e) => {
+                            newTaskCard.classList.add('dragging');
+                            e.dataTransfer.setData('text/plain', newTaskCard.dataset.taskId);
+                        });
+
+                        newTaskCard.addEventListener('dragend', () => {
+                            newTaskCard.classList.remove('dragging');
+                        });
+
+                        column.insertBefore(newTaskCard, this);
+
+                        console.log(`Task added to ${columnName}: ${taskTitle}`);
+                    }
+                });
+            });
+        });
+    </script>
+}

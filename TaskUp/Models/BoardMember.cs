@@ -2,13 +2,13 @@ namespace TaskUp.Models;
 
 public class BoardMember
 {
-    public int Id { get; set; }
-    
     public int BoardId { get; set; }
-    public virtual Board Board { get; set; } = null!;
-
-    public string UserId { get; set; } = null!;
-    public virtual AppUser User { get; set; } = null!;
-
+    public Board Board { get; set; }
+        
+    public string UserId { get; set; }
+    public AppUser User { get; set; }
+        
     public DateTime JoinedAt { get; set; } = DateTime.Now;
+        
+    public string Role { get; set; } = "Member"; // Owner, Admin, Member
 }

@@ -140,3 +140,4 @@
 /home/potato/RiderProjects/TaskUp/TaskUp/obj/Debug/net8.0/TaskUp.pdb
 /home/potato/RiderProjects/TaskUp/TaskUp/obj/Debug/net8.0/TaskUp.genruntimeconfig.cache
 /home/potato/RiderProjects/TaskUp/TaskUp/obj/Debug/net8.0/ref/TaskUp.dll
+/home/potato/RiderProjects/TaskUp/TaskUp/obj/Debug/net8.0/TaskUp.sourcelink.json
