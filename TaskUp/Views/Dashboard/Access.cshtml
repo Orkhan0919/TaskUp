@@ -1,0 +1,425 @@
+@model TaskUp.ViewModels.DashboardAccessVm
+
+@{
+    ViewData["Title"] = "Dashboard Access";
+    Layout = "_LayoutMin";
+}
+
+<div class="min-h-screen flex flex-col justify-center items-center p-4 bg-gray-950">
+    <div class="w-full max-w-md mx-auto">
+        <div class="text-center mb-10 slide-up">
+            <div class="flex justify-center items-center mb-4">
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-blue-700 flex items-center justify-center mr-3">
+                    <i class="fas fa-tasks text-white text-xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold logo-text">TaskUp</h1>
+            </div>
+            <p class="text-gray-400 text-lg">Project Management Dashboard</p>
+        </div>
+        
+        <div class="bg-gray-900 rounded-2xl p-8 shadow-lg fade-in">
+            <h2 class="text-2xl font-semibold mb-2 text-center text-gray-100">Access Dashboard</h2>
+            <p class="text-gray-400 text-center mb-8">Create a new dashboard or join an existing one</p>
+            
+            @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
+            {
+                <div class="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-xl text-red-300 text-sm">
+                    <i class="fas fa-exclamation-circle mr-2"></i> @ViewBag.ErrorMessage
+                </div>
+            }
+            
+            @if (!string.IsNullOrEmpty(ViewBag.SuccessMessage))
+            {
+                <div class="mb-6 p-4 bg-green-900/50 border border-green-700 rounded-xl text-green-300 text-sm">
+                    <i class="fas fa-check-circle mr-2"></i> @ViewBag.SuccessMessage
+                </div>
+            }
+            
+            <button id="createBtn" class="btn-primary w-full py-4 rounded-xl text-lg font-medium mb-4 flex items-center justify-center">
+                <i class="fas fa-plus-circle mr-3"></i>
+                Create New Dashboard
+            </button>
+            
+            <div class="divider">OR</div>
+            
+            <button id="joinBtn" class="btn-secondary w-full py-4 rounded-xl text-lg font-medium mb-8 flex items-center justify-center">
+                <i class="fas fa-sign-in-alt mr-3"></i>
+                Join with Access Code
+            </button>
+            
+            <div id="joinForm" class="hidden slide-up">
+                <h3 class="text-xl font-semibold mb-6 text-center">Enter 6-Digit Access Code</h3>
+                
+                <form id="joinDashboardForm" asp-action="Join" asp-controller="Dashboard" method="post">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="flex justify-center space-x-3 mb-8">
+                        @for (int i = 0; i < 6; i++)
+                        {
+                            <input type="text" 
+                                   maxlength="1" 
+                                   class="code-digit" 
+                                   data-index="@i" 
+                                   name="codeDigits[@i]"
+                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        }
+                    </div>
+                    
+                    <input type="hidden" id="accessCode" name="accessCode" value="" />
+                    
+                    <div class="text-center mb-6">
+                        <p id="codeDisplay" class="text-gray-400 text-sm font-mono">Entered Code: <span id="enteredCode">______</span></p>
+                    </div>
+                    
+                    <div id="passwordSection" class="@(Model?.RequiresPassword == true ? "" : "hidden") slide-up mt-6">
+                        <h4 class="text-lg font-semibold mb-4 text-center flex items-center justify-center">
+                            <i class="fas fa-lock mr-2 text-blue-400"></i> This dashboard is protected
+                        </h4>
+                        <p class="text-gray-400 text-center mb-4">Please enter the password to join this dashboard</p>
+                        
+                        <div class="mb-6">
+                            <label for="dashboardPassword" class="block text-gray-300 mb-2">Dashboard Password</label>
+                            <div class="relative">
+                                <input type="password" 
+                                       id="dashboardPassword" 
+                                       name="password"
+                                       class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white input-focus" 
+                                       placeholder="Enter password"
+                                       value="@Model?.Password">
+                                <button type="button" id="togglePassword" class="absolute right-4 top-3.5 text-gray-400">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            @if (!ViewData.ModelState.IsValid && ViewData.ModelState["Password"]?.Errors.Any() == true)
+                            {
+                                <span class="text-red-400 text-sm mt-1">
+                                    @ViewData.ModelState["Password"]?.Errors.First().ErrorMessage
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-4 mt-8">
+                        <button type="button" id="backBtn" class="btn-secondary flex-1 py-3 rounded-xl font-medium">
+                            <i class="fas fa-arrow-left mr-2"></i> Back
+                        </button>
+                        <button type="submit" id="submitJoinBtn" class="btn-primary flex-1 py-3 rounded-xl font-medium">
+                            Join Dashboard <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="createForm" class="hidden slide-up">
+                <h3 class="text-xl font-semibold mb-6 text-center">Create New Dashboard</h3>
+                
+                <form id="createDashboardForm" asp-action="Create" asp-controller="Dashboard" method="post">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="mb-6">
+                        <label for="dashboardName" class="block text-gray-300 mb-2">Dashboard Name *</label>
+                        <input type="text" 
+                               id="dashboardName" 
+                               name="name"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white input-focus" 
+                               placeholder="Enter dashboard name"
+                               value="@Model?.Name"
+                               required>
+                        @if (!ViewData.ModelState.IsValid && ViewData.ModelState["Name"]?.Errors.Any() == true)
+                        {
+                            <span class="text-red-400 text-sm mt-1">
+                                @ViewData.ModelState["Name"]?.Errors.First().ErrorMessage
+                            </span>
+                        }
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="dashboardDescription" class="block text-gray-300 mb-2">Description (Optional)</label>
+                        <textarea id="dashboardDescription" 
+                                  name="description"
+                                  class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white input-focus" 
+                                  rows="3" 
+                                  placeholder="Enter dashboard description">@Model?.Description</textarea>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <div class="flex items-center mb-4">
+                            <input type="checkbox" 
+                                   id="enablePassword" 
+                                   name="enablePassword"
+                                   class="w-5 h-5 rounded bg-gray-800 border-gray-700"
+                                   @(Model?.EnablePassword == true ? "checked" : "")>
+                            <label for="enablePassword" class="ml-3 text-gray-300">Enable password protection</label>
+                        </div>
+                        
+                        <div id="createPasswordSection" class="@(Model?.EnablePassword == true ? "" : "hidden") slide-up">
+                            <label for="createPassword" class="block text-gray-300 mb-2">Set Dashboard Password *</label>
+                            <div class="relative">
+                                <input type="password" 
+                                       id="createPassword" 
+                                       name="dashboardPassword"
+                                       class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white input-focus" 
+                                       placeholder="Enter password"
+                                       value="@Model?.DashboardPassword"
+                                       @(Model?.EnablePassword == true ? "required" : "")>
+                                <button type="button" id="toggleCreatePassword" class="absolute right-4 top-3.5 text-gray-400">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-gray-500 text-sm mt-2">Note: Users will need this password to join the dashboard</p>
+                            @if (!ViewData.ModelState.IsValid && ViewData.ModelState["DashboardPassword"]?.Errors.Any() == true)
+                            {
+                                <span class="text-red-400 text-sm mt-1">
+                                    @ViewData.ModelState["DashboardPassword"]?.Errors.First().ErrorMessage
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-4">
+                        <button type="button" id="backFromCreateBtn" class="btn-secondary flex-1 py-3 rounded-xl font-medium">
+                            <i class="fas fa-arrow-left mr-2"></i> Back
+                        </button>
+                        <button type="submit" id="submitCreateBtn" class="btn-primary flex-1 py-3 rounded-xl font-medium">
+                            Create Dashboard <i class="fas fa-check ml-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        @if (Model?.ShowDemoInfo == true)
+        {
+            <div class="mt-8 text-center text-gray-500 text-sm">
+                <p>Demo: Try entering "123456" as access code to see password protection</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        .slide-up { animation: slideUp 0.4s ease-out; }
+        
+        @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @@keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .input-focus:focus {
+            border-color: #8ab4f8;
+            box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.1);
+        }
+        
+        .btn-primary { background-color: #1666d1; transition: all 0.2s ease; }
+        .btn-primary:hover { background-color: #1a73e8; }
+        .btn-secondary { background-color: #2d3748; transition: all 0.2s ease; }
+        .btn-secondary:hover { background-color: #4a5568; }
+        
+        .code-digit {
+            width: 50px;
+            height: 60px;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            border-radius: 8px;
+            border: 2px solid #374151;
+            background-color: #1f2937;
+            color: #f8f9fa;
+            transition: all 0.2s ease;
+        }
+        
+        .code-digit:focus {
+            border-color: #8ab4f8;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.1);
+        }
+        
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #9ca3af;
+            margin: 20px 0;
+        }
+        
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #374151;
+        }
+        
+        .divider::before { margin-right: 15px; }
+        .divider::after { margin-left: 15px; }
+        
+        .logo-text {
+            background: linear-gradient(90deg, #8ab4f8, #1a73e8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const createBtn = document.getElementById('createBtn');
+            const joinBtn = document.getElementById('joinBtn');
+            const joinForm = document.getElementById('joinForm');
+            const createForm = document.getElementById('createForm');
+            const backBtn = document.getElementById('backBtn');
+            const backFromCreateBtn = document.getElementById('backFromCreateBtn');
+            const codeInputs = document.querySelectorAll('.code-digit');
+            const passwordSection = document.getElementById('passwordSection');
+            const enteredCodeSpan = document.getElementById('enteredCode');
+            const togglePasswordBtn = document.getElementById('togglePassword');
+            const toggleCreatePasswordBtn = document.getElementById('toggleCreatePassword');
+            const dashboardPassword = document.getElementById('dashboardPassword');
+            const createPassword = document.getElementById('createPassword');
+            const enablePasswordCheckbox = document.getElementById('enablePassword');
+            const createPasswordSection = document.getElementById('createPasswordSection');
+            const joinDashboardForm = document.getElementById('joinDashboardForm');
+            const accessCodeInput = document.getElementById('accessCode');
+            const dashboardName = document.getElementById('dashboardName');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const formType = urlParams.get('form');
+            
+            if (formType === 'join') {
+                showJoinForm();
+                updateEnteredCode();
+            } else if (formType === 'create') {
+                showCreateForm();
+            }
+            
+            joinBtn.addEventListener('click', showJoinForm);
+            createBtn.addEventListener('click', showCreateForm);
+            
+            backBtn.addEventListener('click', () => {
+                joinForm.classList.add('hidden');
+                joinBtn.classList.remove('hidden');
+                createBtn.classList.remove('hidden');
+                document.querySelector('.divider').classList.remove('hidden');
+                codeInputs.forEach(input => { input.value = ''; });
+                enteredCodeSpan.textContent = '______';
+                accessCodeInput.value = '';
+            });
+            
+            backFromCreateBtn.addEventListener('click', () => {
+                createForm.classList.add('hidden');
+                joinBtn.classList.remove('hidden');
+                createBtn.classList.remove('hidden');
+                document.querySelector('.divider').classList.remove('hidden');
+            });
+            
+            codeInputs.forEach((input, index) => {
+                input.addEventListener('input', (e) => {
+                    if (/^\d$/.test(e.target.value)) {
+                        if (index < codeInputs.length - 1) {
+                            codeInputs[index + 1].focus();
+                        }
+                        updateEnteredCode();
+                        updateAccessCodeInput();
+                    } else {
+                        e.target.value = '';
+                    }
+                });
+                
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace') {
+                        if (input.value === '' && index > 0) {
+                            codeInputs[index - 1].focus();
+                        }
+                        setTimeout(() => {
+                            updateEnteredCode();
+                            updateAccessCodeInput();
+                        }, 10);
+                    }
+                });
+            });
+            
+            function updateEnteredCode() {
+                let code = '';
+                codeInputs.forEach(input => { code += input.value || '_'; });
+                enteredCodeSpan.textContent = code;
+            }
+            
+            function updateAccessCodeInput() {
+                let code = '';
+                codeInputs.forEach(input => { code += input.value; });
+                accessCodeInput.value = code;
+            }
+            
+            if (togglePasswordBtn) {
+                togglePasswordBtn.addEventListener('click', () => {
+                    const type = dashboardPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+                    dashboardPassword.setAttribute('type', type);
+                    togglePasswordBtn.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+            
+            if (toggleCreatePasswordBtn) {
+                toggleCreatePasswordBtn.addEventListener('click', () => {
+                    const type = createPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+                    createPassword.setAttribute('type', type);
+                    toggleCreatePasswordBtn.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+            
+            if (enablePasswordCheckbox) {
+                enablePasswordCheckbox.addEventListener('change', () => {
+                    if (enablePasswordCheckbox.checked) {
+                        createPasswordSection.classList.remove('hidden');
+                        createPasswordSection.classList.add('slide-up');
+                        createPassword.required = true;
+                    } else {
+                        createPasswordSection.classList.add('hidden');
+                        createPassword.required = false;
+                        createPassword.value = '';
+                    }
+                });
+            }
+            
+            if (joinDashboardForm) {
+                joinDashboardForm.addEventListener('submit', function(e) {
+                    const code = accessCodeInput.value;
+                    if (code.length !== 6) {
+                        e.preventDefault();
+                        alert('Please enter a valid 6-digit access code');
+                        return;
+                    }
+                    const action = this.getAttribute('action');
+                    this.setAttribute('action', action + '?code=' + code);
+                });
+            }
+            
+            function showJoinForm() {
+                joinBtn.classList.add('hidden');
+                createBtn.classList.add('hidden');
+                document.querySelector('.divider').classList.add('hidden');
+                joinForm.classList.remove('hidden');
+                joinForm.classList.add('slide-up');
+                setTimeout(() => {
+                    if (codeInputs.length > 0) { codeInputs[0].focus(); }
+                }, 100);
+            }
+            
+            function showCreateForm() {
+                joinBtn.classList.add('hidden');
+                createBtn.classList.add('hidden');
+                document.querySelector('.divider').classList.add('hidden');
+                createForm.classList.remove('hidden');
+                createForm.classList.add('slide-up');
+                setTimeout(() => {
+                    if (dashboardName) { dashboardName.focus(); }
+                }, 100);
+            }
+            
+            updateEnteredCode();
+            updateAccessCodeInput();
+        });
+    </script>
+}
