@@ -14,8 +14,7 @@ public class BoardTask
     [StringLength(1000)]
     public string Description { get; set; }
         
-    [StringLength(20)]
-    public TaskPriority Priority { get; set; } = TaskPriority.Medium; 
+    public TaskPriority Priority { get; set; } = TaskPriority.Medium;
         
     public DateTime? DueDate { get; set; }
     public int Order { get; set; }
@@ -26,7 +25,6 @@ public class BoardTask
         
     public DateTime CreatedAt { get; set; } = DateTime.Now;
         
-    // Navigation Properties
     public ICollection<TaskAssignee> Assignees { get; set; } = new List<TaskAssignee>();
     public ICollection<TaskComment> Comments { get; set; } = new List<TaskComment>();
     public ICollection<TaskAttachment> Attachments { get; set; } = new List<TaskAttachment>();

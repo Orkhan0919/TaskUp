@@ -16,6 +16,6 @@ public class AddTaskViewModel
     [StringLength(1000)]
     public string Description { get; set; }
         
-    public TaskPriority Priority { get; set; } = TaskPriority.Medium;        
+    public string Priority { get; set; } = "Medium";
     public DateTime? DueDate { get; set; }
 }

@@ -14,8 +14,11 @@ namespace TaskUp.Models
         public string Surname { get; set; } = null!;
 
         public string FullName => $"{Name} {Surname}";
-        public string DisplayName { get; set; }
-        public string AvatarUrl { get; set; }
+        
+        public string DisplayName { get; set; } = string.Empty; 
+        public string AvatarUrl { get; set; } = string.Empty;   
+        
+        public DateTime CreatedAt { get; set; } = DateTime.Now;  
         
         public ICollection<TaskAssignee> AssignedTasks { get; set; } = new List<TaskAssignee>();
         public ICollection<TaskComment> Comments { get; set; } = new List<TaskComment>();
@@ -23,6 +26,5 @@ namespace TaskUp.Models
         
         public virtual ICollection<Board> OwnedBoards { get; set; } = new List<Board>();
         public virtual ICollection<BoardMember> JoinedBoards { get; set; } = new List<BoardMember>();
-        
     }
 }

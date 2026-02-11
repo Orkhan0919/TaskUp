@@ -171,6 +171,9 @@ namespace TaskUp.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -238,6 +241,41 @@ namespace TaskUp.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("TaskUp.Models.BannedUser", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("BannedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<string>("BannedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BannedBy");
+
+                    b.HasIndex("BoardId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("BannedUsers");
+                });
+
             modelBuilder.Entity("TaskUp.Models.Board", b =>
                 {
                     b.Property<int>("Id")
@@ -245,6 +283,9 @@ namespace TaskUp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoardType")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -274,7 +315,6 @@ namespace TaskUp.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Password")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -377,8 +417,7 @@ namespace TaskUp.Migrations
                     b.Property<string>("Priority")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("nvarchar(450)")
                         .HasDefaultValue("Medium");
 
                     b.Property<string>("Title")
@@ -548,6 +587,33 @@ namespace TaskUp.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TaskUp.Models.BannedUser", b =>
+                {
+                    b.HasOne("TaskUp.Models.AppUser", "BannedByUser")
+                        .WithMany()
+                        .HasForeignKey("BannedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskUp.Models.Board", "Board")
+                        .WithMany("BannedUsers")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskUp.Models.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BannedByUser");
+
+                    b.Navigation("Board");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TaskUp.Models.Board", b =>
                 {
                     b.HasOne("TaskUp.Models.AppUser", "Owner")
@@ -672,6 +738,8 @@ namespace TaskUp.Migrations
 
             modelBuilder.Entity("TaskUp.Models.Board", b =>
                 {
+                    b.Navigation("BannedUsers");
+
                     b.Navigation("Columns");
 
                     b.Navigation("Members");

@@ -1,0 +1,215 @@
+@model TaskUp.ViewModels.DashboardAccessVm
+
+@{
+    ViewData["Title"] = "Join Dashboard";
+    Layout = "_LayoutMin";
+}
+
+<div class="min-h-screen flex flex-col items-center justify-center bg-gray-950 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full">
+        <div class="text-center mb-10">
+            <div class="flex justify-center">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 flex items-center justify-center shadow-lg mb-4">
+                    <i class="fas fa-tasks text-white text-2xl"></i>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold text-white">TaskUp</h1>
+            <p class="text-gray-400 mt-2">Join an existing dashboard</p>
+        </div>
+
+        <div class="bg-gray-900 rounded-2xl p-8 shadow-lg border border-gray-800">
+            <h3 class="text-xl font-semibold mb-6 text-center text-white">Enter 6-Digit Access Code</h3>
+            
+            <form asp-action="JoinBoard" asp-controller="Dashboard" method="post">
+                @Html.AntiForgeryToken()
+                
+                <div class="flex justify-center space-x-3 mb-8">
+                    @for (int i = 0; i < 6; i++)
+                    {
+                        <input type="text" 
+                               maxlength="1" 
+                               class="code-digit" 
+                               data-index="@i" 
+                               name="codeDigits"
+                               oninput="this.value = this.value.replace(/[^0-9A-Za-z]/g, '').toUpperCase()">
+                    }
+                </div>
+                
+                <input type="hidden" id="accessCode" name="AccessCode" value="" />
+                
+                <div class="text-center mb-6">
+                    <p id="codeDisplay" class="text-gray-400 text-sm font-mono">Entered Code: <span id="enteredCode">______</span></p>
+                    @if (ViewData.ModelState["AccessCode"]?.Errors.Any() == true)
+                    {
+                        <span class="text-red-400 text-sm mt-1">
+                            @ViewData.ModelState["AccessCode"]?.Errors.First().ErrorMessage
+                        </span>
+                    }
+                </div>
+                
+                <div id="passwordSection" class="@(Model?.RequiresPassword == true ? "" : "hidden") mt-6">
+                    <h4 class="text-lg font-semibold mb-4 text-center flex items-center justify-center">
+                        <i class="fas fa-lock mr-2 text-blue-400"></i> This dashboard is protected
+                    </h4>
+                    <p class="text-gray-400 text-center mb-4">Please enter the password to join this dashboard</p>
+                    
+                    <div class="mb-6">
+                        <label for="Password" class="block text-gray-300 mb-2">Dashboard Password</label>
+                        <div class="relative">
+                            <input type="password" 
+                                   id="Password" 
+                                   name="Password"
+                                   class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder="Enter password"
+                                   value="@Model?.Password">
+                            <button type="button" id="togglePassword" class="absolute right-4 top-3.5 text-gray-400 hover:text-white">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        @if (ViewData.ModelState["Password"]?.Errors.Any() == true)
+                        {
+                            <span class="text-red-400 text-sm mt-1">
+                                @ViewData.ModelState["Password"]?.Errors.First().ErrorMessage
+                            </span>
+                        }
+                    </div>
+                </div>
+                
+                <div class="flex flex-col space-y-4 mt-8">
+                    <button type="submit" class="w-full py-4 bg-green-600 hover:bg-green-700 rounded-xl text-lg font-medium text-white transition-colors flex items-center justify-center">
+                        <i class="fas fa-sign-in-alt mr-3"></i>
+                        Join Dashboard
+                    </button>
+                    
+                    <div class="flex items-center justify-center space-x-4 text-sm">
+                        <a asp-action="Index" asp-controller="Dashboard" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fas fa-arrow-left mr-2"></i>
+                            Back to Dashboard
+                        </a>
+                        <span class="text-gray-600">•</span>
+                        <a asp-action="Access" asp-controller="Dashboard" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fas fa-plus mr-2"></i>
+                            Create New
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .code-digit {
+            width: 50px;
+            height: 60px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            border-radius: 8px;
+            border: 2px solid #374151;
+            background-color: #1f2937;
+            color: #f8f9fa;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+        .code-digit:focus {
+            border-color: #10b981;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeInputs = document.querySelectorAll('.code-digit');
+            const enteredCodeSpan = document.getElementById('enteredCode');
+            const accessCodeInput = document.getElementById('accessCode');
+            const togglePasswordBtn = document.getElementById('togglePassword');
+            const dashboardPassword = document.getElementById('Password');
+            const joinForm = document.getElementById('joinDashboardForm');
+
+            codeInputs.forEach(function(input, index) {
+                input.addEventListener('input', function(e) {
+                    if (/^[A-Za-z0-9]$/.test(e.target.value)) {
+                        e.target.value = e.target.value.toUpperCase();
+                        if (index < codeInputs.length - 1) {
+                            codeInputs[index + 1].focus();
+                        }
+                        updateEnteredCode();
+                        updateAccessCodeInput();
+                    } else {
+                        e.target.value = '';
+                    }
+                });
+
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Backspace') {
+                        if (input.value === '' && index > 0) {
+                            codeInputs[index - 1].focus();
+                        }
+                        setTimeout(function() {
+                            updateEnteredCode();
+                            updateAccessCodeInput();
+                        }, 10);
+                    }
+                    if (e.key === 'ArrowLeft' && index > 0) {
+                        codeInputs[index - 1].focus();
+                    }
+                    if (e.key === 'ArrowRight' && index < codeInputs.length - 1) {
+                        codeInputs[index + 1].focus();
+                    }
+                });
+            });
+
+            function updateEnteredCode() {
+                let code = '';
+                codeInputs.forEach(function(input) {
+                    code += input.value || '_';
+                });
+                if (enteredCodeSpan) {
+                    enteredCodeSpan.textContent = code;
+                }
+            }
+
+            function updateAccessCodeInput() {
+                let code = '';
+                codeInputs.forEach(function(input) {
+                    code += input.value;
+                });
+                if (accessCodeInput) {
+                    accessCodeInput.value = code;
+                }
+            }
+
+            if (togglePasswordBtn && dashboardPassword) {
+                togglePasswordBtn.addEventListener('click', function() {
+                    const type = dashboardPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+                    dashboardPassword.setAttribute('type', type);
+                    togglePasswordBtn.innerHTML = type === 'password' ? 
+                        '<i class="fas fa-eye"></i>' : 
+                        '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+
+            if (joinForm) {
+                joinForm.addEventListener('submit', function(e) {
+                    const code = accessCodeInput ? accessCodeInput.value : '';
+                    if (code.length !== 6) {
+                        e.preventDefault();
+                        alert('Please enter a valid 6-character access code');
+                    }
+                });
+            }
+
+            updateEnteredCode();
+            updateAccessCodeInput();
+        });
+    </script>
+}

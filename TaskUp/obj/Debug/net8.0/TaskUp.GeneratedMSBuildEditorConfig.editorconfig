@@ -18,12 +18,28 @@ build_property.GenerateRazorMetadataSourceChecksumAttributes =
 build_property.MSBuildProjectDirectory = /home/potato/RiderProjects/TaskUp/TaskUp
 build_property._RazorSourceGeneratorDebug = 
 
+[/home/potato/RiderProjects/TaskUp/TaskUp/Views/Account/Login.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9Mb2dpbi5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/potato/RiderProjects/TaskUp/TaskUp/Views/Account/Register.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9SZWdpc3Rlci5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/potato/RiderProjects/TaskUp/TaskUp/Views/Board/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQm9hcmQvSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/potato/RiderProjects/TaskUp/TaskUp/Views/Dashboard/Access.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvRGFzaGJvYXJkL0FjY2Vzcy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/potato/RiderProjects/TaskUp/TaskUp/Views/Dashboard/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvRGFzaGJvYXJkL0luZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/potato/RiderProjects/TaskUp/TaskUp/Views/Dashboard/Join.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvRGFzaGJvYXJkL0pvaW4uY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/potato/RiderProjects/TaskUp/TaskUp/Views/Home/Index.cshtml]
@@ -40,6 +56,14 @@ build_metadata.AdditionalFiles.CssScope =
 
 [/home/potato/RiderProjects/TaskUp/TaskUp/Views/Shared/_BoardLayout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19Cb2FyZExheW91dC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/potato/RiderProjects/TaskUp/TaskUp/Views/Shared/_Layout2.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19MYXlvdXQyLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/potato/RiderProjects/TaskUp/TaskUp/Views/Shared/_LayoutIdentity.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19MYXlvdXRJZGVudGl0eS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/potato/RiderProjects/TaskUp/TaskUp/Views/Shared/_LayoutMin.cshtml]

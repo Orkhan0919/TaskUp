@@ -1,0 +1,251 @@
+@model List<TaskUp.Models.Board>
+@using TaskUp.Utilities.Enums
+
+@{
+ViewData["Title"] = "My Dashboards";
+Layout = "_Layout2";
+}
+
+<div class="min-h-screen bg-gray-950 p-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white">My Dashboards</h1>
+            <p class="text-gray-400 mt-2">Welcome back! You have @Model.Count active dashboards</p>
+        </div>
+
+        <div class="flex space-x-4 mt-4 md:mt-0">
+            <a asp-action="Access"
+               class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl text-white font-medium flex items-center transition-all transform hover:scale-[1.02]">
+                <i class="fas fa-plus mr-2"></i>
+                New Dashboard
+            </a>
+            <button onclick="showQuickJoin()"
+                    class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-white font-medium flex items-center transition-all">
+                <i class="fas fa-sign-in-alt mr-2"></i>
+                Join
+            </button>
+        </div>
+    </div>
+
+    <!-- İstatistik Kartları -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm">Total Boards</p>
+                    <p class="text-2xl font-bold text-white mt-1">@Model.Count</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-blue-900/30 flex items-center justify-center">
+                    <i class="fas fa-columns text-blue-400 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm">Personal</p>
+                    <p class="text-2xl font-bold text-white mt-1">
+                        @Model.Count(b => b.BoardType == BoardType.Personal)
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-green-900/30 flex items-center justify-center">
+                    <i class="fas fa-user text-green-400 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm">Team</p>
+                    <p class="text-2xl font-bold text-white mt-1">
+                        @Model.Count(b => b.BoardType == BoardType.Team)
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-purple-900/30 flex items-center justify-center">
+                    <i class="fas fa-users text-purple-400 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm">Total Tasks</p>
+                    <p class="text-2xl font-bold text-white mt-1">24</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-yellow-900/30 flex items-center justify-center">
+                    <i class="fas fa-check-circle text-yellow-400 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pano Listesi -->
+    <div class="mb-8">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-semibold text-white">Your Dashboards</h2>
+            <div class="flex space-x-2">
+                <button class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+                    <i class="fas fa-th-large mr-2"></i>All
+                </button>
+                <button class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+                    Personal
+                </button>
+                <button class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+                    Team
+                </button>
+            </div>
+        </div>
+
+        @if (Model.Any())
+        {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach (var board in Model)
+            {
+            <div class="group bg-gray-900 rounded-2xl p-6 border border-gray-800 hover:border-gray-700 transition-all hover:shadow-xl">
+                <!-- Board Header -->
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center">
+                        @if (board.BoardType == BoardType.Personal)
+                        {
+                        <div class="w-10 h-10 rounded-xl bg-blue-900/30 flex items-center justify-center mr-3">
+                            <i class="fas fa-user text-blue-400"></i>
+                        </div>
+                        }
+                        else
+                        {
+                        <div class="w-10 h-10 rounded-xl bg-purple-900/30 flex items-center justify-center mr-3">
+                            <i class="fas fa-users text-purple-400"></i>
+                        </div>
+                        }
+                        <div>
+                            <h3 class="font-semibold text-white group-hover:text-blue-400 transition-colors">
+                                @board.Name
+                            </h3>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Created @board.CreatedAt.ToString("MMM dd, yyyy")
+                            </p>
+                        </div>
+                    </div>
+
+                    <span class="px-3 py-1 @(board.BoardType == BoardType.Personal ? "bg-blue-900/30 text-blue-400" : "bg-purple-900/30 text-purple-400") rounded-full text-xs font-medium">
+                                @(board.BoardType == BoardType.Personal ? "Personal" : "Team")
+                            </span>
+                </div>
+
+                <!-- Board Info -->
+                <p class="text-gray-400 text-sm mb-4 line-clamp-2">
+                    @board.Description 
+                </p>
+
+                <!-- Board Stats -->
+                <div class="flex items-center justify-between text-sm mb-4">
+                    <div class="flex items-center text-gray-500">
+                        <i class="fas fa-tasks mr-2"></i>
+                        <span>@(board.Columns?.Sum(c => c.Tasks?.Count ?? 0) ?? 0) tasks</span>
+                    </div>
+                    <div class="flex items-center text-gray-500">
+                        <i class="fas fa-users mr-2"></i>
+                        <span>@(board.Members?.Count ?? 0) members</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex space-x-3">
+                    <a asp-controller="Board" asp-action="Index" asp-route-id="@board.Id"
+                       class="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium text-white text-center transition-colors">
+                        Open Board
+                    </a>
+                    @if (board.OwnerId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+                    {
+                    <button onclick="showBoardSettings(@board.Id)"
+                            class="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-xl text-gray-400 hover:text-white transition-colors">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    }
+                </div>
+
+                <!-- Share Code (Sadece Team board) -->
+                @if (board.BoardType == BoardType.Team)
+                {
+                <div class="mt-4 pt-4 border-t border-gray-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500">Share code:</span>
+                        <div class="flex items-center">
+                            <code class="text-xs bg-gray-800 px-3 py-1.5 rounded-l-lg text-gray-300 font-mono">
+                                @board.JoinCode
+                            </code>
+                            <button onclick="copyCode('@board.JoinCode')"
+                                    class="bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-r-lg text-gray-400 hover:text-white transition-colors">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                }
+            </div>
+            }
+        </div>
+        }
+        else
+        {
+        <!-- Empty State -->
+        <div class="bg-gray-900 rounded-2xl p-12 text-center border border-gray-800">
+            <div class="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-columns text-3xl text-gray-600"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">No dashboards yet</h3>
+            <p class="text-gray-400 mb-6">Create your first dashboard to start managing your projects</p>
+            <a asp-action="Access"
+               class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl text-white font-medium transition-all transform hover:scale-[1.02]">
+                <i class="fas fa-plus mr-2"></i>
+                Create Dashboard
+            </a>
+        </div>
+        }
+    </div>
+
+    <!-- Son Aktiviteler -->
+    @if (Model.Any())
+    {
+    <div class="mt-8">
+        <h2 class="text-xl font-semibold text-white mb-6">Recent Activity</h2>
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+            <div class="space-y-4">
+                <div class="flex items-center text-sm">
+                    <div class="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center mr-3">
+                        <i class="fas fa-check text-blue-400 text-xs"></i>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-white">Task completed</span>
+                        <span class="text-gray-500 mx-2">•</span>
+                        <span class="text-gray-400">Design homepage</span>
+                    </div>
+                    <span class="text-gray-600 text-xs">2 hours ago</span>
+                </div>
+                <!-- Daha fazla aktivite -->
+            </div>
+        </div>
+    </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    function showQuickJoin() {
+        window.location.href = '/Dashboard/Access';
+    }
+
+    function copyCode(code) {
+        navigator.clipboard.writeText(code);
+        alert('Code copied to clipboard!');
+    }
+
+    function showBoardSettings(boardId) {
+        console.log('Show settings for board:', boardId);
+    }
+</script>
+}

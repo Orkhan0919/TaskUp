@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using TaskUp.Utilities.Enums;  
 
 namespace TaskUp.Models;
 
@@ -19,13 +19,17 @@ public class Board
     public string JoinCode { get; set; }
         
     public bool IsPrivate { get; set; }
-    public string Password { get; set; }
+    public string? Password { get; set; }
         
     public string OwnerId { get; set; }
     public AppUser Owner { get; set; }
-        
+    
+    public BoardType BoardType { get; set; } = BoardType.Team;
+    
     public DateTime CreatedAt { get; set; } = DateTime.Now;
-        
+    
+    public ICollection<BannedUser> BannedUsers { get; set; } = new List<BannedUser>();
+
     public ICollection<BoardColumn> Columns { get; set; } = new List<BoardColumn>();
     public ICollection<BoardMember> Members { get; set; } = new List<BoardMember>();
 }

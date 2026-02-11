@@ -1,3 +1,5 @@
+using TaskUp.Utilities.Enums;
+
 namespace TaskUp.ViewModels
 {
     public class DashboardAccessVm
@@ -10,5 +12,11 @@ namespace TaskUp.ViewModels
         public string? Password { get; set; }
         public bool RequiresPassword { get; set; }
         public bool ShowDemoInfo { get; set; } = true;
+        
+        public BoardType BoardType { get; set; } = BoardType.Team; 
+        
+        public string? InviteCode { get; set; }
+        
+        public UserRole InvitedRole { get; set; } = UserRole.TeamMember;
     }
 }

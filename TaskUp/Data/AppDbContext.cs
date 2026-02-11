@@ -19,6 +19,8 @@ namespace TaskUp.Data
         public DbSet<TaskAssignee> TaskAssignees { get; set; }
         public DbSet<TaskComment> TaskComments { get; set; }
         public DbSet<TaskAttachment> TaskAttachments { get; set; }
+        public DbSet<BannedUser> BannedUsers { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -156,6 +158,29 @@ namespace TaskUp.Data
                       .WithMany(u => u.Attachments)
                       .HasForeignKey(ta => ta.UserId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                modelBuilder.Entity<BannedUser>(entity =>
+                {
+                    entity.HasKey(b => b.Id);
+    
+                    entity.HasOne(b => b.Board)
+                        .WithMany(b => b.BannedUsers)  // 👈 Board.BannedUsers
+                        .HasForeignKey(b => b.BoardId)
+                        .OnDelete(DeleteBehavior.Cascade);
+    
+                    entity.HasOne(b => b.User)
+                        .WithMany()
+                        .HasForeignKey(b => b.UserId)
+                        .OnDelete(DeleteBehavior.Cascade);
+    
+                    entity.HasOne(b => b.BannedByUser)
+                        .WithMany()
+                        .HasForeignKey(b => b.BannedBy)
+                        .OnDelete(DeleteBehavior.Restrict);
+          
+                    entity.Property(b => b.BannedAt)
+                        .HasDefaultValueSql("GETDATE()");
+                });
             });
         }
     }

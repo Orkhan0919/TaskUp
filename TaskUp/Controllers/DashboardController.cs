@@ -5,19 +5,51 @@ using Microsoft.EntityFrameworkCore;
 using TaskUp.Data;
 using TaskUp.Models;
 using TaskUp.ViewModels;
+using TaskUp.Utilities.Enums; // 👈 BoardType için ekle
 
 namespace TaskUp.Controllers;
 
+[Authorize] // 👈 Tüm sayfalar için login zorunlu!
 public class DashboardController : Controller
 {
     private readonly AppDbContext _context;
     private readonly UserManager<AppUser> _userManager;
+    private readonly ILogger<DashboardController> _logger;
 
-    public DashboardController(AppDbContext context, UserManager<AppUser> userManager)
+    public DashboardController(AppDbContext context, UserManager<AppUser> userManager,ILogger<DashboardController> logger)
     {
         _context = context;
         _userManager = userManager;
+        _logger = logger;
     }
+
+    public class CreateBoardRequest
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string BoardType { get; set; }
+        public bool EnablePassword { get; set; }
+        public string DashboardPassword { get; set; }
+    }
+    [HttpGet]
+    public async Task<IActionResult> Index()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return RedirectToAction("Login", "Account");
+
+        // Kullanıcının panolarını getir (üye olduğu ve sahibi olduğu)
+        var boards = await _context.Boards
+            .Include(b => b.Members)
+            .Include(b => b.Columns)
+                .ThenInclude(c => c.Tasks)
+            .Where(b => b.OwnerId == user.Id || 
+                        b.Members.Any(m => m.UserId == user.Id))
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+
+        return View(boards); // Views/Dashboard/Index.cshtml
+    }
+    // ================================================
 
     [HttpGet]
     public IActionResult Access()
@@ -29,30 +61,22 @@ public class DashboardController : Controller
         return View(model);
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateBoard(DashboardAccessVm model)
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> CreateBoard([FromBody] CreateBoardRequest request)
+{
+    try
     {
-        if (!ModelState.IsValid)
+        if (string.IsNullOrWhiteSpace(request.Name))
         {
-            model.ShowDemoInfo = true;
-            return View("Access", model);
-        }
-        
-        if (string.IsNullOrWhiteSpace(model.Name))
-        {
-            ModelState.AddModelError("Name", "Pano ismi zorunludur.");
-            return View("Access", model);
-        }
-
-        if (model.EnablePassword && string.IsNullOrWhiteSpace(model.DashboardPassword))
-        {
-            ModelState.AddModelError("DashboardPassword", "Kilitli pano için bir şifre belirlemelisiniz.");
-            return View("Access", model);
+            return Json(new { success = false, message = "Board name is required" });
         }
 
         var user = await _userManager.GetUserAsync(User);
-        if (user == null) return RedirectToAction("Login", "Account");
+        if (user == null)
+        {
+            return Json(new { success = false, message = "User not found" });
+        }
 
         string uniqueCode;
         do
@@ -61,30 +85,65 @@ public class DashboardController : Controller
         } 
         while (await _context.Boards.AnyAsync(b => b.JoinCode == uniqueCode));
 
+        BoardType boardType = request.BoardType == "personal" ? BoardType.Personal : BoardType.Team;
+
         var newBoard = new Board
         {
-            Name = model.Name,
-            Description = model.Description,
+            Name = request.Name,
+            Description = request.Description ?? "",
             OwnerId = user.Id,
             JoinCode = uniqueCode,
-            IsPrivate = model.EnablePassword,
-            Password = model.EnablePassword ? model.DashboardPassword : null, 
+            BoardType = boardType,
+            IsPrivate = request.EnablePassword,
+            Password = request.EnablePassword ? request.DashboardPassword : null,
             CreatedAt = DateTime.Now
         };
 
         _context.Boards.Add(newBoard);
         await _context.SaveChangesAsync();
 
-        return RedirectToAction("Index", "Board", new { id = newBoard.Id });
-    }
+        var ownerMember = new BoardMember
+        {
+            BoardId = newBoard.Id,
+            UserId = user.Id,
+            JoinedAt = DateTime.Now,
+            Role = "Admin"
+        };
 
+        _context.BoardMembers.Add(ownerMember);
+        await _context.SaveChangesAsync();
+
+        return Json(new { success = true, boardId = newBoard.Id });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Create board error");
+        
+        string errorMessage = ex.Message;
+        if (ex.InnerException != null)
+        {
+            errorMessage += " | Inner: " + ex.InnerException.Message;
+            if (ex.InnerException.InnerException != null)
+            {
+                errorMessage += " | Inner2: " + ex.InnerException.InnerException.Message;
+            }
+        }
+        
+        return Json(new { success = false, message = errorMessage });
+    }
+}
+    [HttpGet]
+    public IActionResult Join()
+    {
+        return View();  
+    }
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> JoinBoard(DashboardAccessVm model)
     {
         if (string.IsNullOrWhiteSpace(model.AccessCode))
         {
-            ModelState.AddModelError("AccessCode", "Lütfen 6 haneli katılım kodunu girin.");
+            ModelState.AddModelError("AccessCode", "Please enter 6-digit participation code.");
             return View("Access", model);
         }
 
@@ -125,7 +184,8 @@ public class DashboardController : Controller
         {
             BoardId = board.Id,
             UserId = user.Id,
-            JoinedAt = DateTime.Now
+            JoinedAt = DateTime.Now,
+            Role = "Member" 
         };
 
         _context.BoardMembers.Add(newMember);

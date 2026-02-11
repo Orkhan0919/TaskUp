@@ -1,0 +1,271 @@
+@* Views/Shared/_LayoutMinimal.cshtml *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - TaskUp</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="~/favicon.ico">
+
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #030712;
+            color: #f9fafb;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Form focus effects */
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            ring: 2px solid #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(59, 130, 246, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @@keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa, #2563eb);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+    </style>
+
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="bg-gray-950 text-gray-100 antialiased flex flex-col min-h-screen">
+
+    <!-- Minimal Header (only logo, no navigation) -->
+    @if (IsSectionDefined("Header"))
+    {
+        @await RenderSectionAsync("Header", required: false)
+    }
+    else
+    {
+        <header class="w-full py-6 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex justify-center md:justify-start">
+                    <a asp-controller="Home" asp-action="Index" class="flex items-center space-x-3 group">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-blue-700 flex items-center justify-center shadow-lg group-hover:shadow-blue-500/25 transition-all duration-300 group-hover:scale-110">
+                            <i class="fas fa-tasks text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-bold gradient-text hidden md:block">
+                            TaskUp
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </header>
+    }
+
+    <!-- Main Content - Flex grow ile ortalanır ve footer aşağı iter -->
+    <main class="flex-grow flex items-center justify-center">
+        @RenderBody()
+    </main>
+
+    <!-- Minimal Footer -->
+    @if (IsSectionDefined("Footer"))
+    {
+        @await RenderSectionAsync("Footer", required: false)
+    }
+    else
+    {
+        <footer class="w-full py-6 px-4 sm:px-6 lg:px-8 border-t border-gray-800">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                    <div class="flex items-center space-x-6 text-xs text-gray-600">
+                        <span>© @DateTime.Now.Year TaskUp</span>
+                        <span class="hidden md:inline">•</span>
+                        <a href="#" class="hover:text-gray-400 transition-colors">Privacy</a>
+                        <span class="hidden md:inline">•</span>
+                        <a href="#" class="hover:text-gray-400 transition-colors">Terms</a>
+                        <span class="hidden md:inline">•</span>
+                        <a href="#" class="hover:text-gray-400 transition-colors">Contact</a>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="#" class="text-gray-600 hover:text-gray-400 transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-600 hover:text-gray-400 transition-colors">
+                            <i class="fab fa-github"></i>
+                        </a>
+                        <a href="#" class="text-gray-600 hover:text-gray-400 transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    }
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
+
+    <!-- Global Scripts -->
+    <script>
+        // DOM Content Loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add fade-in animation to main content
+            document.querySelector('main')?.classList.add('fade-in');
+
+            // Auto-hide alerts after 5 seconds
+            const alerts = document.querySelectorAll('.alert, [class*="bg-red-"], [class*="bg-green-"], [class*="bg-blue-"], [class*="bg-yellow-"]');
+            alerts.forEach(alert => {
+                if (alert.classList.contains('bg-red-900/50') ||
+                    alert.classList.contains('bg-green-900/50') ||
+                    alert.classList.contains('bg-blue-900/50') ||
+                    alert.classList.contains('bg-yellow-900/50')) {
+                    setTimeout(() => {
+                        alert.style.transition = 'opacity 0.5s ease';
+                        alert.style.opacity = '0';
+                        setTimeout(() => {
+                            alert.style.display = 'none';
+                        }, 500);
+                    }, 5000);
+                }
+            });
+        });
+
+        // Global loading spinner
+        function showLoading() {
+            const spinner = document.createElement('div');
+            spinner.className = 'fixed top-0 left-0 w-full h-full bg-gray-950/80 flex items-center justify-center z-[9999]';
+            spinner.id = 'globalLoading';
+            spinner.innerHTML = '<div class="spinner"></div>';
+            document.body.appendChild(spinner);
+        }
+
+        function hideLoading() {
+            const spinner = document.getElementById('globalLoading');
+            if (spinner) {
+                spinner.remove();
+            }
+        }
+
+        // Form submit loading
+        document.addEventListener('submit', function(e) {
+            if (e.target.tagName === 'FORM') {
+                showLoading();
+            }
+        });
+
+        // Global error handler
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Global error:', { msg, url, lineNo, columnNo, error });
+            return false;
+        };
+
+        // Toast notification system
+        window.showToast = function(message, type = 'info') {
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-900' :
+                type === 'error' ? 'bg-red-900' :
+                    type === 'warning' ? 'bg-yellow-900' : 'bg-blue-900';
+
+            toast.className = `fixed top-4 right-4 ${bgColor} border border-gray-700 text-white px-6 py-3 rounded-xl shadow-lg z-[100] transform transition-transform duration-300 translate-x-full`;
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} mr-3"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            }, 5000);
+
+            toast.addEventListener('click', () => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            });
+        };
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

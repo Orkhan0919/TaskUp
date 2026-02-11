@@ -5,229 +5,333 @@
 @{
     ViewData["Title"] = Model.Name;
     Layout = "_BoardLayout";
+    
+    ViewBag.BoardId = Model.Id;
+    ViewBag.BoardTitle = Model.Name;
+    ViewBag.BoardDescription = Model.Description;
+    ViewBag.JoinCode = Model.JoinCode;
+    ViewBag.MemberCount = Model.Members?.Count ?? 0;
 }
 
-<div class="h-screen flex bg-gray-950 text-gray-100 overflow-hidden">
-    <div class="w-16 bg-gray-900 flex flex-col items-center py-6 space-y-8">
-        <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-blue-700 flex items-center justify-center">
-            <i class="fas fa-tasks text-white text-lg"></i>
+<!-- Board Header -->
+<header class="bg-gray-900 border-b border-gray-800 px-8 py-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white">@Model.Name</h1>
+            <div class="flex items-center space-x-4 mt-2 text-sm text-gray-400">
+                <span class="flex items-center">
+                    <i class="fas fa-users mr-2"></i>
+                    <span>@(Model.Members?.Count ?? 0) members</span>
+                </span>
+                <span class="flex items-center">
+                    <i class="fas fa-tasks mr-2"></i>
+                    <span>@(Model.Columns?.Sum(c => c.Tasks?.Count ?? 0) ?? 0) tasks</span>
+                </span>
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <span class="flex items-center">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span>@Model.Description</span>
+                    </span>
+                }
+            </div>
         </div>
 
-        <nav class="flex-1 flex flex-col items-center space-y-6">
-            <a href="#"
-               class="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 transition-colors"
-               title="Dashboard">
-                <i class="fas fa-columns text-xl"></i>
-            </a>
+        <div class="flex items-center space-x-4">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-gray-500"></i>
+                </div>
+                <input type="text" 
+                       id="searchTasks" 
+                       class="w-64 bg-gray-800 border border-gray-700 rounded-xl py-2 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="Search tasks...">
+            </div>
 
-            <a href="#"
-               class="w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-gray-300 transition-colors"
-               title="Members">
-                <i class="fas fa-users text-xl"></i>
-            </a>
+            <button id="shareBoardBtn" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium flex items-center">
+                <i class="fas fa-share-alt mr-2"></i>
+                Share
+                <span class="ml-2 px-2 py-1 bg-gray-700 text-xs rounded">@Model.JoinCode</span>
+            </button>
+            
+            <button id="chatToggleBtn" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium flex items-center">
+                <i class="fas fa-comments mr-2"></i>
+                Chat
+            </button>
+            
+            <button id="addColumnBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium flex items-center">
+                <i class="fas fa-plus mr-2"></i>
+                Add Column
+            </button>
+        </div>
+    </div>
+</header>
 
-            <a href="#"
-               class="w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-gray-300 transition-colors"
-               title="Settings">
-                <i class="fas fa-cog text-xl"></i>
-            </a>
-        </nav>
+<!-- Main Content Area -->
+<div class="flex flex-1 overflow-hidden">
+    <!-- Kanban Board -->
+    <div class="flex-1 overflow-x-auto p-6 transition-all duration-300" id="boardContainer">
+        <div id="boardColumns" class="flex space-x-6 min-w-max">
+            @if (Model.Columns != null)
+            {
+                @foreach (var column in Model.Columns.OrderBy(c => c.Order))
+                {
+                    <div class="w-80 flex-shrink-0 column" data-column-id="@column.Id">
+                        <div class="bg-gray-900 rounded-t-2xl p-4 border-b border-gray-800 flex items-center justify-between">
+                            <div class="flex items-center">
+                                <h3 class="font-semibold text-lg column-title">@column.Name</h3>
+                                <span class="ml-3 px-2 py-1 bg-gray-800 text-gray-400 text-xs rounded-full task-count">
+                                    @(column.Tasks?.Count ?? 0)
+                                </span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button class="text-gray-400 hover:text-white p-1 column-menu-btn">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                            </div>
+                        </div>
 
-        <div class="mt-auto">
-            <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border-2 border-gray-700">
-                <i class="fas fa-user text-gray-400"></i>
+                        <div class="bg-gray-900 rounded-b-2xl p-4 min-h-[500px] max-h-[calc(100vh-200px)] overflow-y-auto space-y-3 drag-drop-container"
+                             data-column-id="@column.Id">
+                            @if (column.Tasks != null)
+                            {
+                                @foreach (var task in column.Tasks.OrderBy(t => t.Order))
+                                {
+                                    var priorityClass = task.Priority switch
+                                    {
+                                        TaskPriority.Urgent => "bg-purple-900/30 text-purple-400 border-purple-700/30",
+                                        TaskPriority.High => "bg-red-900/30 text-red-400 border-red-700/30",
+                                        TaskPriority.Medium => "bg-yellow-900/30 text-yellow-400 border-yellow-700/30",
+                                        TaskPriority.Low => "bg-green-900/30 text-green-400 border-green-700/30",
+                                        _ => "bg-gray-700 text-gray-400 border-gray-600"
+                                    };
+
+                                    <div class="task-card bg-gray-800 rounded-xl p-4 cursor-move hover:bg-gray-750 border border-gray-700 hover:border-gray-600 transition-all"
+                                         data-task-id="@task.Id"
+                                         data-task-title="@task.Title"
+                                         data-task-priority="@task.Priority">
+                                        <div class="flex justify-between items-start mb-3 gap-2">
+                                            <h4 class="font-medium text-white text-sm flex-1 task-title">@task.Title</h4>
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-medium border @priorityClass shrink-0 priority-badge">
+                                                @task.Priority.ToString()
+                                            </span>
+                                        </div>
+
+                                        @if (!string.IsNullOrEmpty(task.Description))
+                                        {
+                                            <p class="text-gray-400 text-xs mb-4 line-clamp-2 task-description">@task.Description</p>
+                                        }
+
+                                        <div class="flex items-center justify-between text-xs mb-3">
+                                            @if (task.DueDate.HasValue)
+                                            {
+                                                var isOverdue = task.DueDate < DateTime.Now;
+                                                var dateClass = isOverdue ? "text-red-400" : "text-gray-400";
+                                                <span class="flex items-center @dateClass due-date">
+                                                    <i class="fas fa-calendar-alt mr-1.5"></i>
+                                                    @task.DueDate.Value.ToString("MMM dd")
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-gray-500 italic">No date</span>
+                                            }
+
+                                            <div class="flex items-center -space-x-2 assignees">
+                                                @if (task.Assignees != null && task.Assignees.Any())
+                                                {
+                                                    @foreach (var assignee in task.Assignees.Take(3))
+                                                    {
+                                                        <div class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-[10px] text-white font-bold assignee-avatar"
+                                                             title="@assignee.User?.UserName"
+                                                             data-user-id="@assignee.UserId">
+                                                            @(assignee.User?.UserName?.Substring(0, 1).ToUpper() ?? "?")
+                                                        </div>
+                                                    }
+                                                    @if (task.Assignees.Count > 3)
+                                                    {
+                                                        <div class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-[10px] text-white font-bold">
+                                                            +@(task.Assignees.Count - 3)
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-xs text-gray-500">
+                                                        <i class="fas fa-user"></i>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="pt-2 border-t border-gray-700 flex items-center gap-4 text-xs text-gray-500">
+                                            <button class="flex items-center hover:text-gray-300 comment-btn" onclick="showTaskDetails(@task.Id)">
+                                                <i class="fas fa-comment mr-1.5"></i>
+                                                <span>@(task.Comments?.Count ?? 0)</span>
+                                            </button>
+                                            <button class="flex items-center hover:text-gray-300 attachment-btn">
+                                                <i class="fas fa-paperclip mr-1.5"></i>
+                                                <span>@(task.Attachments?.Count ?? 0)</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            }
+
+                            <button class="add-task-btn w-full p-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl border-2 border-dashed border-gray-700 hover:border-gray-600 transition-colors flex items-center justify-center">
+                                <i class="fas fa-plus mr-2"></i>
+                                Add Task
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+
+            <div class="w-80 flex-shrink-0">
+                <div class="bg-gray-900 rounded-2xl p-6 border-2 border-dashed border-gray-700 hover:border-gray-600 transition-colors h-full flex flex-col items-center justify-center">
+                    <div class="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center mb-4">
+                        <i class="fas fa-plus text-2xl text-gray-400"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-300 mb-2">Add New Column</h3>
+                    <p class="text-gray-500 text-center text-sm mb-4">Create a new column for your workflow</p>
+                    <button id="addNewColumnBtn" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium">
+                        Create Column
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-gray-900 border-b border-gray-800 px-8 py-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-2xl font-bold text-white">@Model.Name</h1>
-                    <div class="flex items-center space-x-4 mt-2 text-sm text-gray-400">
-                        <span class="flex items-center">
-                            <i class="fas fa-users mr-2"></i>
-                            <span>@(Model.Members?.Count ?? 0) members</span>
-                        </span>
-                        <span class="flex items-center">
-                            <i class="fas fa-tasks mr-2"></i>
-                            <span>@(Model.Columns?.Sum(c => c.Tasks?.Count ?? 0) ?? 0) tasks</span>
-                        </span>
-                        @if (!string.IsNullOrEmpty(Model.Description))
-                        {
-                            <span class="flex items-center">
-                                <i class="fas fa-info-circle mr-2"></i>
-                                <span>@Model.Description</span>
-                            </span>
-                        }
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-4">
-                    <button
-                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium transition-colors flex items-center">
-                        <i class="fas fa-share-alt mr-2"></i>
-                        Share
-                        <span class="ml-2 px-2 py-1 bg-gray-700 text-xs rounded">@Model.JoinCode</span>
-                    </button>
-
-                    <button id="addColumnBtn"
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium transition-colors flex items-center">
-                        <i class="fas fa-plus mr-2"></i>
-                        Add Column
+    <!-- Chat Sidebar -->
+    <div id="chatSidebar" class="w-80 bg-gray-900 border-l border-gray-800 flex flex-col hidden">
+        <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+            <h3 class="font-semibold text-white flex items-center">
+                <i class="fas fa-comments text-blue-400 mr-2"></i>
+                Team Chat
+            </h3>
+            <button id="closeChatBtn" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="text-center text-gray-500 text-sm py-8">
+                <i class="fas fa-comments text-3xl mb-2 opacity-50"></i>
+                <p>No messages yet</p>
+                <p class="text-xs mt-1">Start the conversation!</p>
+            </div>
+        </div>
+        
+        <div class="p-4 border-t border-gray-800">
+            <form id="chatForm">
+                @Html.AntiForgeryToken()
+                <div class="flex space-x-2">
+                    <input type="text" 
+                           id="chatMessageInput"
+                           class="flex-1 bg-gray-800 border border-gray-700 rounded-xl py-2 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Type a message...">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-white">
+                        <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
-            </div>
-        </header>
-
-        <div class="flex-1 overflow-x-auto p-6">
-            <div class="flex space-x-6 min-w-max">
-                @if (Model.Columns != null)
-                {
-                    @foreach (var column in Model.Columns.OrderBy(c => c.Order))
-                    {
-                        <div class="w-80 flex-shrink-0">
-                            <div
-                                class="bg-gray-900 rounded-t-2xl p-4 border-b border-gray-800 flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <h3 class="font-semibold text-lg">@column.Name</h3>
-                                    <span class="ml-3 px-2 py-1 bg-gray-800 text-gray-400 text-xs rounded-full">
-                                        @(column.Tasks?.Count ?? 0)
-                                    </span>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <button class="text-gray-400 hover:text-white p-1">
-                                        <i class="fas fa-ellipsis-h"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div
-                                class="bg-gray-900 rounded-b-2xl p-4 min-h-[500px] max-h-[calc(100vh-200px)] overflow-y-auto space-y-4 drag-drop-container"
-                                data-column-id="@column.Id">
-                                @if (column.Tasks != null)
-                                {
-                                    @foreach (var task in column.Tasks.OrderBy(t => t.Order))
-                                    {
-                                        // 1. Değişken tanımını en başa alıyoruz ki aşağıda kullanabilelim
-                                        var priorityClass = task.Priority switch
-                                        {
-                                            TaskPriority.Urgent => "bg-purple-900/30 text-purple-400 border-purple-700/30",
-                                            TaskPriority.High => "bg-red-900/30 text-red-400 border-red-700/30",
-                                            TaskPriority.Medium => "bg-yellow-900/30 text-yellow-400 border-yellow-700/30",
-                                            TaskPriority.Low => "bg-green-900/30 text-green-400 border-green-700/30",
-                                            _ => "bg-gray-700 text-gray-400 border-gray-600"
-                                        };
-
-                                        <div
-                                            class="task-card bg-gray-800 rounded-xl p-4 cursor-move hover:bg-gray-750 transition-colors border border-gray-700 hover:border-gray-600 mb-3"
-                                            data-task-id="@task.Id">
-
-                                            <div class="flex justify-between items-start mb-3 gap-2">
-                                                <h4 class="font-medium text-white text-sm leading-tight flex-1">@task.Title</h4>
-
-                                                <span
-                                                    class="px-2 py-0.5 rounded text-[10px] font-medium border @priorityClass shrink-0">
-                @task.Priority.ToString()
-            </span>
-                                            </div>
-
-                                            @if (!string.IsNullOrEmpty(task.Description))
-                                            {
-                                                <p class="text-gray-400 text-xs mb-4 line-clamp-2">@task.Description</p>
-                                            }
-
-                                            <div class="flex items-center justify-between text-xs mb-3">
-                                                @if (task.DueDate.HasValue)
-                                                {
-                                                    var isOverdue = task.DueDate < DateTime.Now;
-                                                    var dateClass = isOverdue ? "text-red-400" : "text-gray-400";
-
-                                                    <span class="flex items-center @dateClass">
-                    <i class="fas fa-calendar-alt mr-1.5"></i>
-                                                        @task.DueDate.Value.ToString("MMM dd")
-                </span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-gray-500 italic">No date</span>
-                                                }
-
-                                                <div class="flex items-center -space-x-2">
-                                                    @if (task.Assignees != null && task.Assignees.Any())
-                                                    {
-                                                        @foreach (var assignee in task.Assignees.Take(3))
-                                                        {
-                                                            <div
-                                                                class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-[10px] text-white font-bold"
-                                                                title="@assignee.User?.UserName">
-                                                                @(assignee.User?.UserName?.Substring(0, 1).ToUpper() ?? "?")
-                                                            </div>
-                                                        }
-
-                                                        @if (task.Assignees.Count > 3)
-                                                        {
-                                                            <div
-                                                                class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-[10px] text-white font-bold">
-                                                                +@(task.Assignees.Count - 3)
-                                                            </div>
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        <div
-                                                            class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-xs text-gray-500">
-                                                            <i class="fas fa-user"></i>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                class="pt-2 border-t border-gray-700 flex items-center justify-start gap-4 text-xs text-gray-500">
-                                                <div class="flex items-center hover:text-gray-300">
-                                                    <i class="fas fa-comment mr-1.5"></i>
-                                                    <span>@(task.Comments?.Count ?? 0)</span>
-                                                </div>
-                                                <div class="flex items-center hover:text-gray-300">
-                                                    <i class="fas fa-paperclip mr-1.5"></i>
-                                                    <span>@(task.Attachments?.Count ?? 0)</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                }
-
-                                <button
-                                    class="w-full p-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl border-2 border-dashed border-gray-700 hover:border-gray-600 transition-colors flex items-center justify-center">
-                                    <i class="fas fa-plus mr-2"></i>
-                                    Add Task
-                                </button>
-                            </div>
-                        </div>
-                    }
-                }
-
-                <div class="w-80 flex-shrink-0">
-                    <div
-                        class="bg-gray-900 rounded-2xl p-6 border-2 border-dashed border-gray-700 hover:border-gray-600 transition-colors h-full flex flex-col items-center justify-center">
-                        <div class="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center mb-4">
-                            <i class="fas fa-plus text-2xl text-gray-400"></i>
-                        </div>
-                        <h3 class="text-lg font-medium text-gray-300 mb-2">Add New Column</h3>
-                        <p class="text-gray-500 text-center text-sm mb-4">Create a new column for your workflow</p>
-                        <button
-                            class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm font-medium transition-colors">
-                            Create Column
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>
 
+<!-- Members Sidebar -->
+<div id="membersSidebar" class="fixed inset-y-0 right-0 w-80 bg-gray-900 border-l border-gray-800 transform transition-transform duration-300 translate-x-full z-40 overflow-hidden flex flex-col">
+    <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+        <h3 class="font-semibold text-white flex items-center">
+            <i class="fas fa-users text-blue-400 mr-2"></i>
+            Board Members
+            <span class="ml-2 px-2 py-0.5 bg-gray-800 text-xs rounded-full">@(Model.Members?.Count ?? 0)</span>
+        </h3>
+        <button id="closeMembersBtn" class="text-gray-400 hover:text-white">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-4">
+        <div class="mb-6">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Owner</h4>
+            <div class="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl member-item" data-user-id="@Model.OwnerId">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center mr-3">
+                        <span class="text-sm font-bold text-blue-400">
+                            @(Model.Owner?.UserName?.Substring(0, 1).ToUpper() ?? "O")
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-white">@Model.Owner?.UserName</p>
+                        <p class="text-xs text-gray-500">@Model.Owner?.Email</p>
+                    </div>
+                </div>
+                <span class="px-2 py-1 bg-blue-900/30 text-blue-400 text-xs rounded-full">Owner</span>
+            </div>
+        </div>
+        
+        @if (Model.Members != null && Model.Members.Any())
+        {
+            <div>
+                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Members</h4>
+                <div class="space-y-2">
+                    @foreach (var member in Model.Members.Where(m => m.UserId != Model.OwnerId))
+                    {
+                        <div class="flex items-center justify-between p-3 bg-gray-800/30 hover:bg-gray-800/50 rounded-xl transition-colors member-item" 
+                             data-user-id="@member.UserId"
+                             data-user-role="@member.Role">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3">
+                                    <span class="text-sm font-bold text-gray-300">
+                                        @(member.User?.UserName?.Substring(0, 1).ToUpper() ?? "?")
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-white">@member.User?.UserName</p>
+                                    <p class="text-xs text-gray-500">@member.User?.Email</p>
+                                </div>
+                            </div>
+                            
+                            @if (User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == Model.OwnerId)
+                            {
+                                <div class="relative member-menu-container">
+                                    <button class="text-gray-400 hover:text-white p-2 member-menu-btn">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50 hidden member-dropdown">
+                                        <button class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 flex items-center kick-btn" 
+                                                data-user-id="@member.UserId"> 
+                                            <i class="fas fa-user-minus mr-2 text-yellow-400"></i>
+                                            Kick (Can rejoin)
+                                        </button>
+                                        <button class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 flex items-center ban-btn"
+                                                data-user-id="@member.UserId">  
+                                            <i class="fas fa-ban mr-2"></i>
+                                            Ban (Permanent)
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+    
+    @if (User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == Model.OwnerId)
+    {
+        <div class="p-4 border-t border-gray-800">
+            <button id="inviteMemberBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-medium text-white flex items-center justify-center">
+                <i class="fas fa-user-plus mr-2"></i>
+                Invite Member
+            </button>
+        </div>
+    }
+</div>
+
+<!-- Add Column Modal -->
 <div id="addColumnModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
     <div class="bg-gray-900 rounded-2xl p-8 w-full max-w-md mx-4">
         <div class="flex items-center justify-between mb-6">
@@ -236,211 +340,853 @@
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
-
         <form id="createColumnForm">
+            @Html.AntiForgeryToken()
             <div class="mb-6">
                 <label class="block text-gray-300 mb-2">Column Name</label>
-                <input type="text"
-                       id="columnName"
-                       class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                       placeholder="e.g., In Progress, Review"
+                <input type="text" id="columnName" class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                       placeholder="e.g., In Progress, Review" required>
+            </div>
+            <div class="flex justify-end space-x-4">
+                <button type="button" id="cancelBtn" class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-medium">Cancel</button>
+                <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium">Create Column</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="addTaskModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 rounded-2xl p-8 w-full max-w-lg mx-4 border border-gray-800 shadow-2xl">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-white" id="taskModalTitle">Add New Task</h3>
+            <button id="closeTaskModal" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="createTaskForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="taskColumnId" value="">
+            
+            <div class="mb-6">
+                <label class="block text-gray-300 text-sm font-medium mb-2">Task Title *</label>
+                <input type="text" 
+                       id="taskTitle" 
+                       class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="What needs to be done?"
                        required>
             </div>
-
+            
+            <div class="mb-6">
+                <label class="block text-gray-300 text-sm font-medium mb-2">Description (Optional)</label>
+                <textarea id="taskDescription" 
+                          rows="3"
+                          class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Add more details..."></textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-300 text-sm font-medium mb-2">Priority</label>
+                    <select id="taskPriority" 
+                            class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-300 text-sm font-medium mb-2">Due Date</label>
+                    <input type="date" 
+                           id="taskDueDate"
+                           class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            
             <div class="flex justify-end space-x-4">
-                <button type="button" id="cancelBtn"
-                        class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-medium transition-colors">
+                <button type="button" id="cancelTaskBtn" class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-medium transition-colors">
                     Cancel
                 </button>
-                <button type="submit"
-                        class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition-colors">
-                    Create Column
+                <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium text-white transition-colors">
+                    <i class="fas fa-plus mr-2"></i>
+                    Create Task
                 </button>
             </div>
         </form>
     </div>
 </div>
 
+<!-- Invite Member Modal -->
+<div id="inviteMemberModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 rounded-2xl p-8 w-full max-w-md mx-4">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-white">Invite Member</h3>
+            <button id="closeInviteModal" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="inviteMemberForm">
+            @Html.AntiForgeryToken()
+            <div class="mb-6">
+                <label class="block text-gray-300 text-sm font-medium mb-2">Email Address</label>
+                <input type="email" 
+                       id="inviteEmail" 
+                       class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="colleague@example.com"
+                       required>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-gray-300 text-sm font-medium mb-2">Role</label>
+                <select id="inviteRole" 
+                        class="w-full bg-gray-800 border border-gray-700 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="Member">Member</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>
+            
+            <div class="flex justify-end space-x-4">
+                <button type="button" id="cancelInviteBtn" class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-medium">
+                    Cancel
+                </button>
+                <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium text-white">
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    Send Invitation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Task Details Modal -->
+<div id="taskDetailsModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 rounded-2xl p-8 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-white" id="taskDetailsTitle">Task Details</h3>
+            <button id="closeTaskDetailsModal" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="taskDetailsContent" class="space-y-6"></div>
+    </div>
+</div>
+
 @section Styles {
     <style>
-        .line-clamp-2 {
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-        }
-
-        .drag-drop-container {
-            scrollbar-width: thin;
-            scrollbar-color: #4b5563 #1f2937;
-        }
-
-        .drag-drop-container::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .drag-drop-container::-webkit-scrollbar-track {
-            background: #1f2937;
-            border-radius: 3px;
-        }
-
-        .drag-drop-container::-webkit-scrollbar-thumb {
-            background: #4b5563;
-            border-radius: 3px;
-        }
-
-        .drag-drop-container::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
-        }
-
         .task-card {
             transition: all 0.2s ease;
         }
-
         .task-card.dragging {
             opacity: 0.5;
             transform: rotate(3deg);
         }
-
         .task-card.drag-over {
             border-color: #3b82f6;
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        .drag-drop-container {
+            scrollbar-width: thin;
+            scrollbar-color: #4b5563 #1f2937;
+        }
+        .drag-drop-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .drag-drop-container::-webkit-scrollbar-track {
+            background: #1f2937;
+            border-radius: 3px;
+        }
+        .drag-drop-container::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+        .drag-drop-container::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        .member-item {
+            transition: all 0.2s ease;
+        }
+        .member-menu-container {
+            position: relative;
+        }
+        .member-dropdown {
+            min-width: 160px;
+            right: 0;
+            z-index: 100;
+        }
+        .chat-message {
+            animation: slideIn 0.3s ease;
+        }
+        @@keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .highlight {
+            animation: highlight 0.5s ease;
+        }
+        @@keyframes highlight {
+            0% { background-color: #1e3a8a; }
+            100% { background-color: #1f2937; }
+        }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
     </style>
 }
 
 @section Scripts {
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
+            const boardId = @Model.Id;
+            const currentUserId = '@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value';
+            const isOwner = currentUserId === '@Model.OwnerId';
+            
+            // ============= COLUMN EKLEME =============
             const addColumnBtn = document.getElementById('addColumnBtn');
+            const addNewColumnBtn = document.getElementById('addNewColumnBtn');
             const addColumnModal = document.getElementById('addColumnModal');
             const closeModal = document.getElementById('closeModal');
             const cancelBtn = document.getElementById('cancelBtn');
             const createColumnForm = document.getElementById('createColumnForm');
-
-            if (addColumnBtn) {
-                addColumnBtn.addEventListener('click', () => {
-                    addColumnModal.classList.remove('hidden');
-                });
+            
+            function showColumnModal() {
+                addColumnModal.classList.remove('hidden');
             }
-
-            const closeModalFunc = () => {
+            
+            if (addColumnBtn) addColumnBtn.addEventListener('click', showColumnModal);
+            if (addNewColumnBtn) addNewColumnBtn.addEventListener('click', showColumnModal);
+            
+            function closeModalFunc() {
                 addColumnModal.classList.add('hidden');
-            };
-
+                document.getElementById('columnName').value = '';
+            }
+            
             if (closeModal) closeModal.addEventListener('click', closeModalFunc);
             if (cancelBtn) cancelBtn.addEventListener('click', closeModalFunc);
-
+            
             if (createColumnForm) {
-                createColumnForm.addEventListener('submit', (e) => {
+                createColumnForm.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    const columnName = document.getElementById('columnName').value;
-
-                    console.log('Creating column:', columnName);
-
-                    closeModalFunc();
-                    document.getElementById('columnName').value = '';
-
-                    alert(`Column "${columnName}" created successfully!`);
+                    const columnName = document.getElementById('columnName').value.trim();
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    
+                    if (!columnName) {
+                        alert('Please enter a column name');
+                        return;
+                    }
+                    
+                    fetch('/Board/AddColumn', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            BoardId: boardId,
+                            Name: columnName
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            addColumnToUI(data.columnId, columnName);
+                            closeModalFunc();
+                            window.boardToast('Column created successfully!', 'success');
+                        } else {
+                            alert('Failed to create column: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Failed to create column. Please try again.');
+                    });
                 });
             }
-
-            const taskCards = document.querySelectorAll('.task-card');
-            const columns = document.querySelectorAll('.drag-drop-container');
-
-            taskCards.forEach(card => {
-                card.setAttribute('draggable', 'true');
-
-                card.addEventListener('dragstart', (e) => {
-                    card.classList.add('dragging');
-                    e.dataTransfer.setData('text/plain', card.dataset.taskId);
+            
+            function addColumnToUI(columnId, columnName) {
+                const boardColumns = document.getElementById('boardColumns');
+                const addColumnCard = boardColumns.lastElementChild;
+                const newColumn = document.createElement('div');
+                newColumn.className = 'w-80 flex-shrink-0 column';
+                newColumn.dataset.columnId = columnId;
+                newColumn.innerHTML = `
+                    <div class="bg-gray-900 rounded-t-2xl p-4 border-b border-gray-800 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <h3 class="font-semibold text-lg column-title">${columnName}</h3>
+                            <span class="ml-3 px-2 py-1 bg-gray-800 text-gray-400 text-xs rounded-full task-count">0</span>
+                        </div>
+                        <button class="text-gray-400 hover:text-white p-1">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
+                    </div>
+                    <div class="bg-gray-900 rounded-b-2xl p-4 min-h-[500px] max-h-[calc(100vh-200px)] overflow-y-auto space-y-3 drag-drop-container"
+                         data-column-id="${columnId}">
+                        <button class="add-task-btn w-full p-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl border-2 border-dashed border-gray-700 hover:border-gray-600 transition-colors flex items-center justify-center">
+                            <i class="fas fa-plus mr-2"></i>
+                            Add Task
+                        </button>
+                    </div>
+                `;
+                boardColumns.insertBefore(newColumn, addColumnCard);
+                initDragDropForColumn(newColumn.querySelector('.drag-drop-container'));
+                newColumn.querySelector('.add-task-btn').addEventListener('click', function() {
+                    showAddTaskModal(this);
                 });
-
-                card.addEventListener('dragend', () => {
-                    card.classList.remove('dragging');
+            }
+            
+            // ============= TASK EKLEME =============
+            const addTaskModal = document.getElementById('addTaskModal');
+            const closeTaskModal = document.getElementById('closeTaskModal');
+            const cancelTaskBtn = document.getElementById('cancelTaskBtn');
+            const createTaskForm = document.getElementById('createTaskForm');
+            
+            function showAddTaskModal(button) {
+                const column = button.closest('.drag-drop-container');
+                const columnId = column.dataset.columnId;
+                const columnName = column.parentElement.querySelector('.column-title').textContent;
+                document.getElementById('taskColumnId').value = columnId;
+                document.getElementById('taskModalTitle').textContent = `Add Task to "${columnName}"`;
+                addTaskModal.classList.remove('hidden');
+            }
+            
+            if (closeTaskModal) {
+                closeTaskModal.addEventListener('click', function() {
+                    addTaskModal.classList.add('hidden');
+                    document.getElementById('createTaskForm').reset();
                 });
-            });
-
-            columns.forEach(column => {
-                column.addEventListener('dragover', (e) => {
+            }
+            if (cancelTaskBtn) {
+                cancelTaskBtn.addEventListener('click', function() {
+                    addTaskModal.classList.add('hidden');
+                    document.getElementById('createTaskForm').reset();
+                });
+            }
+            
+            if (createTaskForm) {
+                createTaskForm.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    const draggingCard = document.querySelector('.dragging');
-                    if (draggingCard) {
-                        column.classList.add('drag-over');
+                    const columnId = document.getElementById('taskColumnId').value;
+                    const title = document.getElementById('taskTitle').value.trim();
+                    const description = document.getElementById('taskDescription').value.trim();
+                    const priority = document.getElementById('taskPriority').value;
+                    const dueDate = document.getElementById('taskDueDate').value || null;
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    
+                    if (!title) {
+                        alert('Please enter a task title');
+                        return;
                     }
+                    
+                    fetch('/Board/AddTask', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            ColumnId: parseInt(columnId),
+                            Title: title,
+                            Description: description,
+                            Priority: priority,
+                            DueDate: dueDate
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const column = document.querySelector(`.drag-drop-container[data-column-id="${columnId}"]`);
+                            addTaskToUI(column, data.taskId, title, description, priority, dueDate);
+                            addTaskModal.classList.add('hidden');
+                            createTaskForm.reset();
+                            window.boardToast('Task added successfully!', 'success');
+                        } else {
+                            alert('Failed to add task: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Failed to add task. Please try again.');
+                    });
                 });
-
-                column.addEventListener('dragleave', () => {
-                    column.classList.remove('drag-over');
+            }
+            
+            function addTaskToUI(column, taskId, title, description, priority, dueDate) {
+                const priorityClass = getPriorityClass(priority);
+                const dueDateText = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
+                const isOverdue = dueDate ? new Date(dueDate) < new Date() : false;
+                const dateClass = isOverdue ? 'text-red-400' : 'text-gray-400';
+                const newTaskCard = document.createElement('div');
+                newTaskCard.className = 'task-card bg-gray-800 rounded-xl p-4 cursor-move hover:bg-gray-750 border border-gray-700 hover:border-gray-600 transition-all';
+                newTaskCard.setAttribute('draggable', 'true');
+                newTaskCard.dataset.taskId = taskId;
+                newTaskCard.dataset.taskTitle = title;
+                newTaskCard.dataset.taskPriority = priority;
+                newTaskCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-3 gap-2">
+                        <h4 class="font-medium text-white text-sm flex-1 task-title">${title}</h4>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-medium border ${priorityClass} shrink-0 priority-badge">${priority}</span>
+                    </div>
+                    ${description ? `<p class="text-gray-400 text-xs mb-4 line-clamp-2 task-description">${description}</p>` : ''}
+                    <div class="flex items-center justify-between text-xs mb-3">
+                        ${dueDateText ? `<span class="flex items-center ${dateClass} due-date"><i class="fas fa-calendar-alt mr-1.5"></i>${dueDateText}</span>` : `<span class="text-gray-500 italic">No date</span>`}
+                        <div class="flex items-center -space-x-2 assignees">
+                            <div class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-xs text-gray-500">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-gray-700 flex items-center gap-4 text-xs text-gray-500">
+                        <button class="flex items-center hover:text-gray-300 comment-btn" onclick="showTaskDetails(${taskId})">
+                            <i class="fas fa-comment mr-1.5"></i><span>0</span>
+                        </button>
+                        <button class="flex items-center hover:text-gray-300 attachment-btn">
+                            <i class="fas fa-paperclip mr-1.5"></i><span>0</span>
+                        </button>
+                    </div>
+                `;
+                newTaskCard.addEventListener('dragstart', function(e) {
+                    this.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', this.dataset.taskId);
                 });
-
-                column.addEventListener('drop', (e) => {
+                newTaskCard.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                });
+                column.insertBefore(newTaskCard, column.querySelector('.add-task-btn'));
+                updateColumnTaskCounts();
+            }
+            
+            function getPriorityClass(priority) {
+                switch(priority) {
+                    case 'Urgent': return 'bg-purple-900/30 text-purple-400 border-purple-700/30';
+                    case 'High': return 'bg-red-900/30 text-red-400 border-red-700/30';
+                    case 'Medium': return 'bg-yellow-900/30 text-yellow-400 border-yellow-700/30';
+                    case 'Low': return 'bg-green-900/30 text-green-400 border-green-700/30';
+                    default: return 'bg-gray-700 text-gray-400 border-gray-600';
+                }
+            }
+            
+            // ============= DRAG & DROP =============
+            function initDragDropForColumn(container) {
+                container.addEventListener('dragover', function(e) {
                     e.preventDefault();
-                    column.classList.remove('drag-over');
-
+                    if (document.querySelector('.dragging')) container.classList.add('drag-over');
+                });
+                container.addEventListener('dragleave', function() {
+                    container.classList.remove('drag-over');
+                });
+                container.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    container.classList.remove('drag-over');
                     const taskId = e.dataTransfer.getData('text/plain');
                     const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-
-                    if (taskCard && column !== taskCard.parentElement) {
-                        console.log(`Moving task ${taskId} to column ${column.dataset.columnId}`);
-
-                        column.insertBefore(taskCard, column.lastElementChild);
-
-                        const columnName = column.parentElement.querySelector('h3').textContent;
-                        console.log(`Task moved to ${columnName}`);
+                    if (taskCard && container !== taskCard.parentElement) {
+                        const columnId = container.dataset.columnId;
+                        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                        fetch('/Board/MoveTask', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': token
+                            },
+                            body: JSON.stringify({
+                                TaskId: parseInt(taskId),
+                                ColumnId: parseInt(columnId)
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const addTaskBtn = container.querySelector('.add-task-btn');
+                                if (addTaskBtn) container.insertBefore(taskCard, addTaskBtn);
+                                else container.appendChild(taskCard);
+                                updateColumnTaskCounts();
+                                window.boardToast('Task moved successfully', 'success');
+                            } else {
+                                window.boardToast('Failed to move task: ' + data.message, 'error');
+                            }
+                        })
+                        .catch(error => window.boardToast('Network error', 'error'));
                     }
                 });
+            }
+            
+            document.querySelectorAll('.drag-drop-container').forEach(container => {
+                initDragDropForColumn(container);
             });
-
-            const addTaskButtons = document.querySelectorAll('.drag-drop-container button:last-child');
-            addTaskButtons.forEach(button => {
-                button.addEventListener('click', function () {
-                    const column = this.closest('.drag-drop-container');
-                    const columnName = column.parentElement.querySelector('h3').textContent;
-
-                    const taskTitle = prompt(`Add a new task to "${columnName}":`);
-
-                    if (taskTitle && taskTitle.trim()) {
-                        const newTaskCard = document.createElement('div');
-                        newTaskCard.className = 'task-card bg-gray-800 rounded-xl p-4 cursor-move hover:bg-gray-750 transition-colors border border-gray-700 hover:border-gray-600';
-                        newTaskCard.setAttribute('draggable', 'true');
-                        newTaskCard.dataset.taskId = 'temp-' + Date.now();
-
-                        newTaskCard.innerHTML = `
-                            <div class="flex justify-between items-start mb-3">
-                                <h4 class="font-medium text-white">${taskTitle}</h4>
-                                <span class="px-2 py-1 text-xs font-medium rounded-lg border bg-gray-700 text-gray-400 border-gray-600">
-                                    Medium
-                                </span>
-                            </div>
-                            <div class="text-sm text-gray-500 mb-4">
-                                New task added just now
-                            </div>
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-gray-500 text-sm">No due date</span>
-                                <div class="flex items-center -space-x-2">
-                                    <div class="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-900 flex items-center justify-center text-xs text-gray-500">
-                                        <i class="fas fa-user"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-
-                        newTaskCard.addEventListener('dragstart', (e) => {
-                            newTaskCard.classList.add('dragging');
-                            e.dataTransfer.setData('text/plain', newTaskCard.dataset.taskId);
-                        });
-
-                        newTaskCard.addEventListener('dragend', () => {
-                            newTaskCard.classList.remove('dragging');
-                        });
-
-                        column.insertBefore(newTaskCard, this);
-
-                        console.log(`Task added to ${columnName}: ${taskTitle}`);
-                    }
+            
+            document.querySelectorAll('.task-card').forEach(card => {
+                card.setAttribute('draggable', 'true');
+                card.addEventListener('dragstart', function(e) {
+                    this.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', this.dataset.taskId);
+                });
+                card.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
                 });
             });
+            
+            function updateColumnTaskCounts() {
+                document.querySelectorAll('.column').forEach(column => {
+                    const container = column.querySelector('.drag-drop-container');
+                    const taskCount = container.querySelectorAll('.task-card').length;
+                    const taskCountElement = column.querySelector('.task-count');
+                    if (taskCountElement) taskCountElement.textContent = taskCount;
+                });
+            }
+            
+            document.querySelectorAll('.add-task-btn').forEach(button => {
+                button.addEventListener('click', function() { showAddTaskModal(this); });
+            });
+            
+            // ============= TASK ARAMA =============
+            const searchInput = document.getElementById('searchTasks');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase().trim();
+                    document.querySelectorAll('.task-card').forEach(card => {
+                        const title = card.dataset.taskTitle?.toLowerCase() || '';
+                        const description = card.querySelector('.task-description')?.textContent?.toLowerCase() || '';
+                        if (searchTerm === '' || title.includes(searchTerm) || description.includes(searchTerm)) {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            }
+            
+            // ============= MEMBERS SIDEBAR =============
+            const membersBtn = document.querySelector('a[title="Members"]');
+            const membersSidebar = document.getElementById('membersSidebar');
+            const closeMembersBtn = document.getElementById('closeMembersBtn');
+            
+            if (membersBtn && membersSidebar) {
+                membersBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    membersSidebar.classList.remove('translate-x-full');
+                });
+            }
+            if (closeMembersBtn) {
+                closeMembersBtn.addEventListener('click', function() {
+                    membersSidebar.classList.add('translate-x-full');
+                });
+            }
+            document.addEventListener('click', function(e) {
+                if (membersSidebar && !membersSidebar.contains(e.target) && 
+                    !e.target.closest('a[title="Members"]') && 
+                    !membersSidebar.classList.contains('translate-x-full')) {
+                    membersSidebar.classList.add('translate-x-full');
+                }
+            });
+
+            // ============= KICK/BAN İŞLEMLERİ =============
+            // ============= KICK/BAN İŞLEMLERİ =============
+            if (isOwner) {
+                document.querySelectorAll('.member-menu-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const container = this.closest('.member-menu-container');
+                        if (!container) return;
+
+                        const dropdown = container.querySelector('.member-dropdown');
+                        if (!dropdown) return;
+
+                        document.querySelectorAll('.member-dropdown').forEach(d => {
+                            if (d !== dropdown) d.classList.add('hidden');
+                        });
+
+                        dropdown.classList.toggle('hidden');
+                    });
+                });
+
+                document.querySelectorAll('.kick-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+
+                        const userId = this.dataset.userId;
+                        const memberItem = this.closest('.member-item');
+                        const userName = memberItem?.querySelector('.text-white')?.textContent || 'User';
+
+                        if (!userId) {
+                            window.boardToast('User ID not found!', 'error');
+                            return;
+                        }
+
+                        if (confirm(`Kick ${userName}? They can rejoin later.`)) {
+                            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+                            fetch('/Board/KickMember', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'RequestVerificationToken': token
+                                },
+                                body: JSON.stringify({
+                                    boardId: boardId,
+                                    userId: userId
+                                })
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        memberItem.remove();
+                                        updateMemberCount();
+                                        window.boardToast('Member kicked successfully', 'success');
+                                    } else {
+                                        window.boardToast('Failed to kick member: ' + data.message, 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    window.boardToast('Error kicking member', 'error');
+                                });
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.ban-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+
+                        const userId = this.dataset.userId;
+                        const memberItem = this.closest('.member-item');
+                        const userName = memberItem?.querySelector('.text-white')?.textContent || 'User';
+
+                        if (!userId) {
+                            window.boardToast('User ID not found!', 'error');
+                            return;
+                        }
+
+                        if (confirm(`Permanently ban ${userName}? They cannot rejoin.`)) {
+                            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+                            fetch('/Board/BanMember', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'RequestVerificationToken': token
+                                },
+                                body: JSON.stringify({
+                                    boardId: boardId,
+                                    userId: userId
+                                })
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        memberItem.remove();
+                                        updateMemberCount();
+                                        window.boardToast('User banned permanently', 'warning');
+                                    } else {
+                                        window.boardToast('Failed to ban member: ' + data.message, 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    window.boardToast('Error banning member', 'error');
+                                });
+                        }
+                    });
+                });
+            }
+            function updateMemberCount() {
+                const memberCount = document.querySelectorAll('.member-item').length;
+                document.querySelectorAll('.fa-users').forEach(el => {
+                    const countSpan = el.parentElement.querySelector('span:not(.ml-2)');
+                    if (countSpan && countSpan.textContent.includes('members')) {
+                        countSpan.textContent = `${memberCount} members`;
+                    }
+                });
+                const sidebarCount = document.querySelector('#membersSidebar .ml-2.px-2.py-0\\.5');
+                if (sidebarCount) sidebarCount.textContent = memberCount;
+            }
+            
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.member-menu-container')) {
+                    document.querySelectorAll('.member-dropdown').forEach(d => {
+                        d.classList.add('hidden');
+                    });
+                }
+            });
+            
+            // ============= INVITE MEMBER =============
+            const inviteMemberBtn = document.getElementById('inviteMemberBtn');
+            const inviteMemberModal = document.getElementById('inviteMemberModal');
+            const closeInviteModal = document.getElementById('closeInviteModal');
+            const cancelInviteBtn = document.getElementById('cancelInviteBtn');
+            const inviteMemberForm = document.getElementById('inviteMemberForm');
+            
+            if (inviteMemberBtn) {
+                inviteMemberBtn.addEventListener('click', function() {
+                    inviteMemberModal.classList.remove('hidden');
+                });
+            }
+            
+            function closeInviteModalFunc() {
+                inviteMemberModal.classList.add('hidden');
+                document.getElementById('inviteEmail').value = '';
+            }
+            if (closeInviteModal) closeInviteModal.addEventListener('click', closeInviteModalFunc);
+            if (cancelInviteBtn) cancelInviteBtn.addEventListener('click', closeInviteModalFunc);
+            
+            if (inviteMemberForm) {
+                inviteMemberForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const email = document.getElementById('inviteEmail').value.trim();
+                    const role = document.getElementById('inviteRole').value;
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    
+                    if (!email) {
+                        alert('Please enter an email address');
+                        return;
+                    }
+                    
+                    fetch('/Board/InviteMember', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            boardId: boardId,
+                            email: email,
+                            role: role
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            closeInviteModalFunc();
+                            window.boardToast('Invitation sent successfully!', 'success');
+                        } else {
+                            alert('Failed to send invitation: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Failed to send invitation. Please try again.');
+                    });
+                });
+            }
+            
+            // ============= CHAT SYSTEM =============
+            const chatToggleBtn = document.getElementById('chatToggleBtn');
+            const chatSidebar = document.getElementById('chatSidebar');
+            const closeChatBtn = document.getElementById('closeChatBtn');
+            const chatForm = document.getElementById('chatForm');
+            const chatMessages = document.getElementById('chatMessages');
+            const chatMessageInput = document.getElementById('chatMessageInput');
+            
+            if (chatToggleBtn && chatSidebar) {
+                chatToggleBtn.addEventListener('click', function() {
+                    chatSidebar.classList.toggle('hidden');
+                });
+            }
+            if (closeChatBtn) {
+                closeChatBtn.addEventListener('click', function() {
+                    chatSidebar.classList.add('hidden');
+                });
+            }
+            
+            function addChatMessageToUI(message) {
+                const isCurrentUser = message.userId === currentUserId;
+                const messageElement = document.createElement('div');
+                messageElement.className = `flex ${isCurrentUser ? 'justify-end' : 'justify-start'} chat-message`;
+                messageElement.innerHTML = `
+                    <div class="max-w-[80%] ${isCurrentUser ? 'bg-blue-600' : 'bg-gray-800'} rounded-2xl px-4 py-2">
+                        ${!isCurrentUser ? `<p class="text-xs text-blue-400 mb-1">${message.userName}</p>` : ''}
+                        <p class="text-sm text-white">${message.content}</p>
+                        <p class="text-xs text-gray-400 mt-1">${new Date(message.createdAt).toLocaleTimeString()}</p>
+                    </div>
+                `;
+                chatMessages.appendChild(messageElement);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            if (chatForm) {
+                chatForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const content = chatMessageInput.value.trim();
+                    if (!content) return;
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    fetch('/Board/SendChatMessage', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            boardId: boardId,
+                            content: content
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            addChatMessageToUI({
+                                userId: currentUserId,
+                                userName: '@User.Identity?.Name',
+                                content: content,
+                                createdAt: new Date().toISOString()
+                            });
+                            chatMessageInput.value = '';
+                        }
+                    });
+                });
+            }
+            
+            // ============= SHARE BOARD =============
+            const shareBoardBtn = document.getElementById('shareBoardBtn');
+            if (shareBoardBtn) {
+                shareBoardBtn.addEventListener('click', function() {
+                    navigator.clipboard.writeText('@Model.JoinCode');
+                    window.boardToast('Join code copied to clipboard!', 'success');
+                });
+            }
+            
+            // ============= TASK DETAILS =============
+            window.showTaskDetails = function(taskId) {
+                const modal = document.getElementById('taskDetailsModal');
+                const content = document.getElementById('taskDetailsContent');
+                fetch(`/Board/GetTaskDetails?taskId=${taskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            content.innerHTML = data.html;
+                            modal.classList.remove('hidden');
+                        }
+                    });
+            };
+            
+            const closeTaskDetailsModal = document.getElementById('closeTaskDetailsModal');
+            if (closeTaskDetailsModal) {
+                closeTaskDetailsModal.addEventListener('click', function() {
+                    document.getElementById('taskDetailsModal').classList.add('hidden');
+                });
+            }
+            
+            // ============= TOAST SYSTEM =============
+            window.boardToast = function(message, type = 'info') {
+                const toast = document.createElement('div');
+                const bgColor = type === 'success' ? 'bg-green-900' : 
+                               type === 'error' ? 'bg-red-900' : 
+                               type === 'warning' ? 'bg-yellow-900' : 'bg-blue-900';
+                toast.className = `fixed top-4 right-4 ${bgColor} border border-gray-700 text-white px-6 py-3 rounded-xl shadow-lg z-[100] transform transition-transform duration-300 translate-x-full`;
+                toast.innerHTML = `<div class="flex items-center"><i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} mr-3"></i><span>${message}</span></div>`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.classList.remove('translate-x-full'), 10);
+                setTimeout(() => {
+                    toast.classList.add('translate-x-full');
+                    setTimeout(() => toast.remove(), 300);
+                }, 5000);
+                toast.addEventListener('click', () => toast.remove());
+            };
         });
     </script>
 }
